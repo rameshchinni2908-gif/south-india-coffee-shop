@@ -52,4 +52,14 @@ describe("loadEnvironment", () => {
       }),
     ).toThrow(/must be replaced/);
   });
+
+  it("rejects an invalid shop timezone", () => {
+    expect(() =>
+      loadEnvironment({
+        MONGODB_URI: "mongodb://localhost:27017/test",
+        JWT_SECRET: VALID_JWT_SECRET,
+        SHOP_TIMEZONE: "Not/A-Timezone",
+      }),
+    ).toThrow(/SHOP_TIMEZONE/);
+  });
 });

@@ -47,5 +47,6 @@ const priceHistorySchema = new Schema(
 );
 
 priceHistorySchema.index({ productId: 1, changedAt: -1 });
+priceHistorySchema.index({ changedAt: -1 });
 
 export const PriceHistoryModel = model("PriceHistory", priceHistorySchema);

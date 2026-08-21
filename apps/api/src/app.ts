@@ -10,6 +10,7 @@ import { notFoundHandler } from "./middleware/not-found-handler.js";
 import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
 import { createAdminOrderRouter } from "./routes/admin-order-routes.js";
 import { createAdminProductRouter } from "./routes/admin-product-routes.js";
+import { createAdminReportRouter } from "./routes/admin-report-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
@@ -19,6 +20,7 @@ import type { AuthService } from "./services/auth-service.js";
 import type { CategoryService } from "./services/category-service.js";
 import type { ProductService } from "./services/product-service.js";
 import type { OrderService } from "./services/order-service.js";
+import type { ReportService } from "./services/report-service.js";
 
 interface CatalogServices {
   categoryService: CategoryService;
@@ -31,6 +33,7 @@ interface CreateAppOptions {
   isProduction: boolean;
   catalogServices?: CatalogServices;
   orderService?: OrderService;
+  reportService?: ReportService;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -41,6 +44,7 @@ export const createApp = ({
   isProduction,
   catalogServices,
   orderService,
+  reportService,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -92,6 +96,10 @@ export const createApp = ({
   if (orderService) {
     app.use("/api/orders", createOrderRouter(orderService));
     app.use("/api/admin/orders", createAdminOrderRouter(authService, orderService));
+  }
+
+  if (reportService) {
+    app.use("/api/admin/reports", createAdminReportRouter(authService, reportService));
   }
 
   app.use(notFoundHandler);

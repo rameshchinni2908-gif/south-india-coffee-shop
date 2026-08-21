@@ -1,4 +1,5 @@
 import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
@@ -80,6 +81,9 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
       <Box sx={{ bgcolor: "background.paper", borderBottom: "1px solid", borderColor: "divider" }}>
         <Container maxWidth="xl">
           <Stack direction="row" spacing={1} sx={{ py: 1, overflowX: "auto" }}>
+            <Button component={Link} to="/admin/dashboard" startIcon={<DashboardOutlinedIcon />}>
+              Dashboard
+            </Button>
             <Button component={Link} to="/admin/orders" startIcon={<ReceiptLongOutlinedIcon />}>
               Orders
             </Button>

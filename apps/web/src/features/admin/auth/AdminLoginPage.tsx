@@ -39,7 +39,7 @@ export const AdminLoginPage = () => {
     try {
       const user = await loginMutation.mutateAsync(values);
       queryClient.setQueryData(AUTH_QUERY_KEY, user);
-      const destination = (location.state as { from?: string } | null)?.from ?? "/admin/products";
+      const destination = (location.state as { from?: string } | null)?.from ?? "/admin/dashboard";
       navigate(destination, { replace: true });
     } catch {
       // The mutation state renders the API's safe authentication error.

@@ -49,6 +49,29 @@ const product = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
+const dashboardSummary = {
+  generatedAt: "2026-08-21T10:00:00.000Z",
+  timezone: "Asia/Kolkata",
+  today: {
+    totalOrders: 0,
+    orderCount: 0,
+    salesTotal: 0,
+    itemsSold: 0,
+    statusCounts: {
+      PLACED: 0,
+      CONFIRMED: 0,
+      PREPARING: 0,
+      READY: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+    },
+  },
+  month: { orderCount: 0, salesTotal: 0, itemsSold: 0 },
+  lowStockTotal: 0,
+  lowStockVariants: [],
+  recentPriceChanges: [],
+};
+
 const user = (role: "ADMIN" | "STAFF") => ({
   id: "507f1f77bcf86cd799439099",
   name: role === "ADMIN" ? "Admin User" : "Staff User",
@@ -94,6 +117,9 @@ const installAdminFetch = (role: "ADMIN" | "STAFF" = "ADMIN") => {
 
     if (url.endsWith("/api/auth/me")) {
       return Promise.resolve(apiResponse({ user: user(role) }));
+    }
+    if (url.endsWith("/api/admin/reports/summary")) {
+      return Promise.resolve(apiResponse({ summary: dashboardSummary }));
     }
     if (url.includes("/api/admin/categories")) {
       return Promise.resolve(
@@ -162,7 +188,7 @@ describe("admin product management", () => {
     expect(await screen.findByText("Invalid email or password")).toBeInTheDocument();
   });
 
-  it("signs in and loads the product-management screen", async () => {
+  it("signs in and loads the dashboard", async () => {
     const fetchMock = installAdminFetch("ADMIN");
     fetchMock.mockImplementationOnce(() => Promise.resolve(apiResponse({ user: user("ADMIN") })));
     const visitor = userEvent.setup();
@@ -172,8 +198,8 @@ describe("admin product management", () => {
     await visitor.type(screen.getByLabelText("Password"), "correct-password");
     await visitor.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("heading", { name: "Filter Coffee" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open order queue" })).toBeInTheDocument();
   });
 
   it("does not render the archive action for STAFF", async () => {

@@ -10,11 +10,13 @@ import { loadEnvironment } from "./config/environment.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
 import { MongooseOrderRepository } from "./repositories/order-repository.js";
 import { MongooseProductRepository } from "./repositories/product-repository.js";
+import { MongooseReportRepository } from "./repositories/report-repository.js";
 import { MongooseUserRepository } from "./repositories/user-repository.js";
 import { createAuthService } from "./services/auth-service.js";
 import { createCategoryService } from "./services/category-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
+import { createReportService } from "./services/report-service.js";
 
 const logger = pino();
 
@@ -52,12 +54,17 @@ const startServer = async (): Promise<void> => {
     categoryRepository,
     taxPercentage: environment.TAX_PERCENTAGE,
   });
+  const reportService = createReportService({
+    reportRepository: new MongooseReportRepository(),
+    timezone: environment.SHOP_TIMEZONE,
+  });
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
     isProduction: environment.NODE_ENV === "production",
     catalogServices: { categoryService, productService },
     orderService,
+    reportService,
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");

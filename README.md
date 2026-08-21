@@ -85,6 +85,12 @@ PLACED -> CONFIRMED -> PREPARING -> READY -> COMPLETED
 `PREPARING`, `READY`, `COMPLETED`, and `CANCELLED` cannot skip or reverse
 status. Completing a pay-at-shop order records its payment as paid.
 
+The staff dashboard is available at `/admin/dashboard`. It shows today's order
+status counts, completed sales for today and the current month, low-stock
+variants, and recent price changes. Daily and monthly boundaries use
+`SHOP_TIMEZONE`; sales totals include only orders that reached `COMPLETED`
+during the selected period.
+
 ## Catalog endpoints
 
 Public:
@@ -105,6 +111,7 @@ Authenticated staff/admin:
 - `PATCH /api/admin/products/:id/availability`
 - `GET /api/admin/orders`
 - `PATCH /api/admin/orders/:id/status`
+- `GET /api/admin/reports/summary`
 
 Prices are integer paise. Product deletion is a soft archive and is restricted
 to `ADMIN`; `STAFF` and `ADMIN` can manage stock and availability. Variant price
