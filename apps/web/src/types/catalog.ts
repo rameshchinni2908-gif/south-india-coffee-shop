@@ -27,6 +27,9 @@ export interface Product {
   isVegetarian: boolean;
   variants: ProductVariant[];
   isActive: boolean;
+  isArchived: boolean;
+  archivedAt: string | null;
+  archivedBy: string | null;
   lowStockThreshold: number;
   createdAt: string;
   updatedAt: string;

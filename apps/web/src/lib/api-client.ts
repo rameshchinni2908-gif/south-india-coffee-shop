@@ -12,24 +12,18 @@ export class ApiClientError extends Error {
   }
 }
 
-export const apiGet = async <TData, TMeta = Record<string, never>>(
+const apiRequest = async <TData, TMeta = Record<string, never>>(
   path: string,
-  signal?: AbortSignal,
+  options: RequestInit,
 ): Promise<ApiResponse<TData, TMeta>> => {
-  const requestOptions: RequestInit = {
-    method: "GET",
+  const response = await fetch(`${environment.apiBaseUrl}${path}`, {
     credentials: "include",
+    ...options,
     headers: {
       Accept: "application/json",
+      ...options.headers,
     },
-  };
-
-  if (signal) {
-    requestOptions.signal = signal;
-  }
-
-  const response = await fetch(`${environment.apiBaseUrl}${path}`, requestOptions);
-
+  });
   const payload = (await response.json()) as ApiResponse<TData, TMeta>;
 
   if (!response.ok || !payload.success) {
@@ -41,6 +35,21 @@ export const apiGet = async <TData, TMeta = Record<string, never>>(
   }
 
   return payload;
+};
+
+export const apiGet = async <TData, TMeta = Record<string, never>>(
+  path: string,
+  signal?: AbortSignal,
+): Promise<ApiResponse<TData, TMeta>> => {
+  const requestOptions: RequestInit = {
+    method: "GET",
+  };
+
+  if (signal) {
+    requestOptions.signal = signal;
+  }
+
+  return apiRequest<TData, TMeta>(path, requestOptions);
 };
 
 export const apiPost = async <TData, TBody, TMeta = Record<string, never>>(
@@ -50,9 +59,7 @@ export const apiPost = async <TData, TBody, TMeta = Record<string, never>>(
 ): Promise<ApiResponse<TData, TMeta>> => {
   const requestOptions: RequestInit = {
     method: "POST",
-    credentials: "include",
     headers: {
-      Accept: "application/json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -62,16 +69,19 @@ export const apiPost = async <TData, TBody, TMeta = Record<string, never>>(
     requestOptions.signal = signal;
   }
 
-  const response = await fetch(`${environment.apiBaseUrl}${path}`, requestOptions);
-  const payload = (await response.json()) as ApiResponse<TData, TMeta>;
-
-  if (!response.ok || !payload.success) {
-    throw new ApiClientError(
-      response.status,
-      payload.error?.code ?? "REQUEST_FAILED",
-      payload.error?.message ?? "The request could not be completed",
-    );
-  }
-
-  return payload;
+  return apiRequest<TData, TMeta>(path, requestOptions);
 };
+
+export const apiPatch = async <TData, TBody, TMeta = Record<string, never>>(
+  path: string,
+  body: TBody,
+): Promise<ApiResponse<TData, TMeta>> =>
+  apiRequest<TData, TMeta>(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const apiDelete = async <TData, TMeta = Record<string, never>>(
+  path: string,
+): Promise<ApiResponse<TData, TMeta>> => apiRequest<TData, TMeta>(path, { method: "DELETE" });

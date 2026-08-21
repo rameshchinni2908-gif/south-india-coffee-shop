@@ -1,0 +1,86 @@
+import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import {
+  Alert,
+  AppBar,
+  Box,
+  Button,
+  Chip,
+  Container,
+  IconButton,
+  Stack,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet, useNavigate } from "react-router-dom";
+
+import type { StaffUser } from "../../../types/auth.js";
+import { logout } from "../auth/auth-api.js";
+import { AUTH_QUERY_KEY } from "../auth/auth-query.js";
+
+export const AdminLayout = ({ user }: { user: StaffUser }) => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY });
+      navigate("/admin/login", { replace: true });
+    },
+  });
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f7f2e9" }}>
+      <AppBar position="static" elevation={0} sx={{ bgcolor: "primary.dark" }}>
+        <Container maxWidth="xl">
+          <Toolbar disableGutters sx={{ minHeight: 72, gap: 2 }}>
+            <CoffeeRoundedIcon aria-hidden="true" />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" noWrap sx={{ fontWeight: 850 }}>
+                Coffee Shop Admin
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                Product and availability management
+              </Typography>
+            </Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ ml: "auto", alignItems: "center", display: { xs: "none", sm: "flex" } }}
+            >
+              <Chip label={`${user.name} · ${user.role}`} color="secondary" size="small" />
+              <Button component={Link} to="/" color="inherit" startIcon={<StorefrontRoundedIcon />}>
+                Customer menu
+              </Button>
+              <Button
+                color="inherit"
+                startIcon={<LogoutRoundedIcon />}
+                disabled={logoutMutation.isPending}
+                onClick={() => logoutMutation.mutate()}
+              >
+                Sign out
+              </Button>
+            </Stack>
+            <IconButton
+              color="inherit"
+              aria-label="Sign out"
+              disabled={logoutMutation.isPending}
+              onClick={() => logoutMutation.mutate()}
+              sx={{ ml: "auto", display: { sm: "none" } }}
+            >
+              <LogoutRoundedIcon />
+            </IconButton>
+          </Toolbar>
+        </Container>
+      </AppBar>
+      {logoutMutation.isError && (
+        <Container maxWidth="xl" sx={{ mt: 2 }}>
+          <Alert severity="error">Sign out failed. Please try again.</Alert>
+        </Container>
+      )}
+      <Outlet context={{ user }} />
+    </Box>
+  );
+};

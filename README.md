@@ -58,6 +58,13 @@ duplicate account.
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
+The staff interface is available at `http://localhost:5173/admin/login`. After
+sign-in, `/admin/products` supports category creation, product and variant
+creation/editing, activation, price changes, stock and availability updates,
+and ADMIN-only product archival. Staff authentication uses the secure HTTP-only
+cookie issued by the API; credentials and access tokens are not stored in the
+browser.
+
 ## Catalog endpoints
 
 Public:

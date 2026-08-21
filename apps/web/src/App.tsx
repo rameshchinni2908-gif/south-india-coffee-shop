@@ -26,6 +26,24 @@ const OrderConfirmationPage = lazy(async () => {
   return { default: module.OrderConfirmationPage };
 });
 
+const AdminLoginPage = lazy(async () => {
+  const module = await import("./features/admin/auth/AdminLoginPage.js");
+
+  return { default: module.AdminLoginPage };
+});
+
+const AdminGate = lazy(async () => {
+  const module = await import("./features/admin/auth/AdminGate.js");
+
+  return { default: module.AdminGate };
+});
+
+const AdminProductsPage = lazy(async () => {
+  const module = await import("./features/admin/products/AdminProductsPage.js");
+
+  return { default: module.AdminProductsPage };
+});
+
 const RouteLoading = () => (
   <Box
     role="status"
@@ -43,6 +61,11 @@ export const AppRoutes = () => (
         <Route path="/" element={<MenuPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route element={<AdminGate />}>
+          <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
+          <Route path="/admin/products" element={<AdminProductsPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
