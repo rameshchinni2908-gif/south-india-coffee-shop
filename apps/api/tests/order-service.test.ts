@@ -18,7 +18,12 @@ import type {
   PriceHistoryInput,
   ProductRecord,
 } from "../src/types/catalog.js";
-import type { NewOrderRecord, OrderRecord } from "../src/types/order.js";
+import type {
+  NewOrderRecord,
+  OrderListFilters,
+  OrderRecord,
+  OrderStatus,
+} from "../src/types/order.js";
 
 const CATEGORY_ID = "507f1f77bcf86cd799439020";
 const PRODUCT_ID = "507f1f77bcf86cd799439021";
@@ -138,8 +143,40 @@ class FakeProductRepository implements ProductRepository {
   }
 }
 
+const createOrderRecord = (status: OrderStatus = "PLACED"): OrderRecord => ({
+  id: "507f1f77bcf86cd799439099",
+  orderNumber: "SIC-20260821-ABC123",
+  customerName: "Ramesh Kumar",
+  customerMobile: "9876543210",
+  items: [
+    {
+      productId: PRODUCT_ID,
+      variantId: VARIANT_ID,
+      productName: "Filter Coffee",
+      variantName: "Regular",
+      sku: "COFFEE-REG",
+      unitPrice: 4500,
+      quantity: 2,
+      lineTotal: 9000,
+    },
+  ],
+  subtotal: 9000,
+  taxAmount: 450,
+  totalAmount: 9450,
+  paymentMethod: "PAY_AT_SHOP",
+  paymentStatus: status === "COMPLETED" ? "PAID" : "PENDING",
+  status,
+  pickupTime: new Date("2026-08-21T11:00:00.000Z"),
+  notes: "Less sugar",
+  createdAt: NOW,
+  updatedAt: NOW,
+});
+
 class FakeOrderRepository implements OrderRepository {
   public createdOrder: NewOrderRecord | null = null;
+  public currentOrder: OrderRecord | null = createOrderRecord();
+  public confirmHasStock = true;
+  public lastListFilters: OrderListFilters | null = null;
 
   public create(order: NewOrderRecord): Promise<OrderRecord> {
     this.createdOrder = order;
@@ -150,6 +187,65 @@ class FakeOrderRepository implements OrderRepository {
       createdAt: NOW,
       updatedAt: NOW,
     });
+  }
+
+  public list(filters: OrderListFilters) {
+    this.lastListFilters = filters;
+    return Promise.resolve({
+      items: this.currentOrder ? [this.currentOrder] : [],
+      meta: { page: filters.page, limit: filters.limit, total: 1, totalPages: 1 },
+    });
+  }
+
+  public findById(id: string): Promise<OrderRecord | null> {
+    return Promise.resolve(this.currentOrder?.id === id ? this.currentOrder : null);
+  }
+
+  public findByTracking(orderNumber: string, customerMobile: string): Promise<OrderRecord | null> {
+    return Promise.resolve(
+      this.currentOrder?.orderNumber === orderNumber &&
+        this.currentOrder.customerMobile === customerMobile
+        ? this.currentOrder
+        : null,
+    );
+  }
+
+  public updateStatus(
+    id: string,
+    expectedStatus: OrderStatus,
+    nextStatus: OrderStatus,
+  ): Promise<OrderRecord | null> {
+    if (this.currentOrder?.id !== id || this.currentOrder.status !== expectedStatus) {
+      return Promise.resolve(null);
+    }
+
+    this.currentOrder = {
+      ...this.currentOrder,
+      status: nextStatus,
+      paymentStatus: nextStatus === "COMPLETED" ? "PAID" : this.currentOrder.paymentStatus,
+    };
+    return Promise.resolve(this.currentOrder);
+  }
+
+  public confirm(id: string) {
+    if (!this.confirmHasStock) {
+      return Promise.resolve({ kind: "insufficient-stock" } as const);
+    }
+    if (this.currentOrder?.id !== id || this.currentOrder.status !== "PLACED") {
+      return Promise.resolve({ kind: "conflict" } as const);
+    }
+
+    this.currentOrder = { ...this.currentOrder, status: "CONFIRMED" };
+    return Promise.resolve({ kind: "updated", order: this.currentOrder } as const);
+  }
+
+  public cancelConfirmed(id: string) {
+    if (this.currentOrder?.id !== id || this.currentOrder.status !== "CONFIRMED") {
+      return Promise.resolve({ kind: "conflict" } as const);
+    }
+
+    this.currentOrder = { ...this.currentOrder, status: "CANCELLED" };
+    return Promise.resolve({ kind: "updated", order: this.currentOrder } as const);
   }
 }
 
@@ -245,5 +341,79 @@ describe("order service", () => {
     await expect(
       service.create({ ...validInput, pickupTime: "2026-08-21T09:59:00.000Z" }),
     ).rejects.toMatchObject({ statusCode: 400, code: "INVALID_PICKUP_TIME" });
+  });
+
+  it("confirms a placed order through the transactional repository operation", async () => {
+    const { service, orderRepository } = createService();
+
+    const order = await service.updateStatus(createOrderRecord().id, { status: "CONFIRMED" });
+
+    expect(order.status).toBe("CONFIRMED");
+    expect(orderRepository.currentOrder?.status).toBe("CONFIRMED");
+  });
+
+  it("rejects confirmation when current stock is insufficient", async () => {
+    const { service, orderRepository } = createService();
+    orderRepository.confirmHasStock = false;
+
+    await expect(
+      service.updateStatus(createOrderRecord().id, { status: "CONFIRMED" }),
+    ).rejects.toMatchObject({ statusCode: 409, code: "INSUFFICIENT_STOCK" });
+  });
+
+  it("rejects skipped and terminal status transitions", async () => {
+    const { service, orderRepository } = createService();
+
+    await expect(
+      service.updateStatus(createOrderRecord().id, { status: "READY" }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: "INVALID_ORDER_STATUS_TRANSITION",
+    });
+
+    orderRepository.currentOrder = createOrderRecord("COMPLETED");
+    await expect(
+      service.updateStatus(createOrderRecord().id, { status: "CANCELLED" }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: "INVALID_ORDER_STATUS_TRANSITION",
+    });
+  });
+
+  it("restores confirmed stock through the transactional cancellation operation", async () => {
+    const { service, orderRepository } = createService();
+    orderRepository.currentOrder = createOrderRecord("CONFIRMED");
+
+    const order = await service.updateStatus(createOrderRecord().id, { status: "CANCELLED" });
+
+    expect(order.status).toBe("CANCELLED");
+  });
+
+  it("moves a confirmed order through preparation, pickup, and completion", async () => {
+    const { service, orderRepository } = createService();
+    const orderId = createOrderRecord().id;
+    orderRepository.currentOrder = createOrderRecord("CONFIRMED");
+
+    await expect(service.updateStatus(orderId, { status: "PREPARING" })).resolves.toMatchObject({
+      status: "PREPARING",
+    });
+    await expect(service.updateStatus(orderId, { status: "READY" })).resolves.toMatchObject({
+      status: "READY",
+    });
+    await expect(service.updateStatus(orderId, { status: "COMPLETED" })).resolves.toMatchObject({
+      status: "COMPLETED",
+      paymentStatus: "PAID",
+    });
+  });
+
+  it("tracks an order only when number and mobile both match", async () => {
+    const { service } = createService();
+
+    await expect(
+      service.track({ orderNumber: "SIC-20260821-ABC123", customerMobile: "9876543210" }),
+    ).resolves.toMatchObject({ status: "PLACED" });
+    await expect(
+      service.track({ orderNumber: "SIC-20260821-ABC123", customerMobile: "9999999999" }),
+    ).rejects.toMatchObject({ statusCode: 404, code: "ORDER_NOT_FOUND" });
   });
 });

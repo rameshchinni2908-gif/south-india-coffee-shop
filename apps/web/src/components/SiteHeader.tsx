@@ -1,9 +1,11 @@
 import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import {
   AppBar,
   Badge,
   Box,
+  Button,
   Chip,
   Container,
   IconButton,
@@ -74,12 +76,30 @@ export const SiteHeader = () => {
               display: { xs: "none", sm: "flex" },
             }}
           />
+          <Button
+            component={Link}
+            to="/track-order"
+            color="inherit"
+            startIcon={<ReceiptLongOutlinedIcon />}
+            sx={{ ml: 1.5, display: { xs: "none", md: "inline-flex" } }}
+          >
+            Track order
+          </Button>
+          <IconButton
+            component={Link}
+            to="/track-order"
+            color="primary"
+            aria-label="Track an order"
+            sx={{ ml: "auto", display: { xs: "inline-flex", md: "none" } }}
+          >
+            <ReceiptLongOutlinedIcon />
+          </IconButton>
           <IconButton
             component={Link}
             to="/cart"
             color="primary"
             aria-label={`Cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-            sx={{ ml: { xs: "auto", sm: 1.5 } }}
+            sx={{ ml: 1 }}
           >
             <Badge badgeContent={itemCount} color="secondary" max={99}>
               <ShoppingBagOutlinedIcon />

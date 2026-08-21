@@ -26,6 +26,12 @@ const OrderConfirmationPage = lazy(async () => {
   return { default: module.OrderConfirmationPage };
 });
 
+const OrderTrackingPage = lazy(async () => {
+  const module = await import("./features/orders/OrderTrackingPage.js");
+
+  return { default: module.OrderTrackingPage };
+});
+
 const AdminLoginPage = lazy(async () => {
   const module = await import("./features/admin/auth/AdminLoginPage.js");
 
@@ -42,6 +48,12 @@ const AdminProductsPage = lazy(async () => {
   const module = await import("./features/admin/products/AdminProductsPage.js");
 
   return { default: module.AdminProductsPage };
+});
+
+const AdminOrdersPage = lazy(async () => {
+  const module = await import("./features/admin/orders/AdminOrdersPage.js");
+
+  return { default: module.AdminOrdersPage };
 });
 
 const RouteLoading = () => (
@@ -61,9 +73,11 @@ export const AppRoutes = () => (
         <Route path="/" element={<MenuPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
+        <Route path="/track-order" element={<OrderTrackingPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route element={<AdminGate />}>
-          <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/orders" replace />} />
+          <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

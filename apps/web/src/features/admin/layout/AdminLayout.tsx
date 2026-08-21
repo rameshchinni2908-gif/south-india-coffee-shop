@@ -1,5 +1,7 @@
 import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import {
   Alert,
@@ -42,7 +44,7 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
                 Coffee Shop Admin
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                Product and availability management
+                Shop operations
               </Typography>
             </Box>
             <Stack
@@ -75,6 +77,18 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
           </Toolbar>
         </Container>
       </AppBar>
+      <Box sx={{ bgcolor: "background.paper", borderBottom: "1px solid", borderColor: "divider" }}>
+        <Container maxWidth="xl">
+          <Stack direction="row" spacing={1} sx={{ py: 1, overflowX: "auto" }}>
+            <Button component={Link} to="/admin/orders" startIcon={<ReceiptLongOutlinedIcon />}>
+              Orders
+            </Button>
+            <Button component={Link} to="/admin/products" startIcon={<Inventory2OutlinedIcon />}>
+              Products
+            </Button>
+          </Stack>
+        </Container>
+      </Box>
       {logoutMutation.isError && (
         <Container maxWidth="xl" sx={{ mt: 2 }}>
           <Alert severity="error">Sign out failed. Please try again.</Alert>

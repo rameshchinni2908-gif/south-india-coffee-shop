@@ -30,15 +30,23 @@ availability, vegetarian, sorting, and pagination state is stored in the URL.
 Available variants can be added to the device-local cart. The `/cart` page
 collects customer and pickup details, while the API reloads current products,
 validates stock, snapshots names and prices, and calculates the final total.
+Customers can check a pickup at `/track-order` with the order number and the
+mobile number used at checkout.
 
 ## Pickup orders
 
 - `POST /api/orders`
+- `POST /api/orders/track`
 
 Orders use `PAY_AT_SHOP`, begin with status `PLACED`, and store money as integer
 paise. Set `TAX_PERCENTAGE` in `apps/api/.env`; keep it at `0` until the shop
-owner confirms the required value. Stock is validated during checkout and will
-be reduced atomically when an order is confirmed in the order-management step.
+owner confirms the required value. Stock is validated during checkout and
+reduced in a MongoDB transaction when staff confirm an order. Cancelling a
+confirmed order restores its stock in the same transaction.
+
+Order confirmation requires MongoDB transaction support. Use MongoDB Atlas or
+a local replica set; a standalone local `mongod` can accept checkout orders but
+cannot atomically confirm them.
 
 ## Seed the first admin
 
@@ -65,6 +73,18 @@ and ADMIN-only product archival. Staff authentication uses the secure HTTP-only
 cookie issued by the API; credentials and access tokens are not stored in the
 browser.
 
+The authenticated order queue is available at `/admin/orders`. It supports
+search, status filtering, pagination, and the enforced workflow:
+
+```text
+PLACED -> CONFIRMED -> PREPARING -> READY -> COMPLETED
+   |          |
+   +----------+----------------------------> CANCELLED
+```
+
+`PREPARING`, `READY`, `COMPLETED`, and `CANCELLED` cannot skip or reverse
+status. Completing a pay-at-shop order records its payment as paid.
+
 ## Catalog endpoints
 
 Public:
@@ -83,6 +103,8 @@ Authenticated staff/admin:
 - `GET|POST /api/admin/products`
 - `GET|PATCH|DELETE /api/admin/products/:id`
 - `PATCH /api/admin/products/:id/availability`
+- `GET /api/admin/orders`
+- `PATCH /api/admin/orders/:id/status`
 
 Prices are integer paise. Product deletion is a soft archive and is restricted
 to `ADMIN`; `STAFF` and `ADMIN` can manage stock and availability. Variant price

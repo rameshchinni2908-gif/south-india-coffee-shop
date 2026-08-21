@@ -8,6 +8,7 @@ import { getDatabaseState, type DatabaseState } from "./config/database.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found-handler.js";
 import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
+import { createAdminOrderRouter } from "./routes/admin-order-routes.js";
 import { createAdminProductRouter } from "./routes/admin-product-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
@@ -90,6 +91,7 @@ export const createApp = ({
 
   if (orderService) {
     app.use("/api/orders", createOrderRouter(orderService));
+    app.use("/api/admin/orders", createAdminOrderRouter(authService, orderService));
   }
 
   app.use(notFoundHandler);

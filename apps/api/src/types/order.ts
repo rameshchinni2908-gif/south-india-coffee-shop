@@ -1,3 +1,5 @@
+import type { PaginatedResult } from "./catalog.js";
+
 export const ORDER_STATUSES = [
   "PLACED",
   "CONFIRMED",
@@ -39,3 +41,14 @@ export interface OrderRecord {
 }
 
 export type NewOrderRecord = Omit<OrderRecord, "id" | "createdAt" | "updatedAt">;
+
+export interface OrderListFilters {
+  page: number;
+  limit: number;
+  search?: string;
+  status?: OrderStatus;
+  sortBy: "createdAt" | "pickupTime";
+  sortOrder: "asc" | "desc";
+}
+
+export type OrderListResult = PaginatedResult<OrderRecord>;

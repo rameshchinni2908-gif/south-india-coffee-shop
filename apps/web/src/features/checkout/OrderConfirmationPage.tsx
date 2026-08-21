@@ -82,9 +82,14 @@ export const OrderConfirmationPage = () => {
                 </Stack>
               </Stack>
 
-              <Button component={Link} to="/" variant="contained" sx={{ mt: 4 }}>
-                Back to menu
-              </Button>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 4 }}>
+                <Button component={Link} to="/track-order" variant="contained" fullWidth>
+                  Track this order
+                </Button>
+                <Button component={Link} to="/" variant="outlined" fullWidth>
+                  Back to menu
+                </Button>
+              </Stack>
             </Paper>
           )}
         </Container>
