@@ -35,6 +35,29 @@ duplicate account.
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
+## Catalog endpoints
+
+Public:
+
+- `GET /api/categories`
+- `GET /api/products`
+- `GET /api/products/:slug`
+
+Product lists support `page`, `limit`, `search`, `category`, `available`,
+`vegetarian`, `sortBy`, and `sortOrder` query parameters.
+
+Authenticated staff/admin:
+
+- `GET|POST /api/admin/categories`
+- `PATCH /api/admin/categories/:id`
+- `GET|POST /api/admin/products`
+- `GET|PATCH|DELETE /api/admin/products/:id`
+- `PATCH /api/admin/products/:id/availability`
+
+Prices are integer paise. Product deletion is a soft archive and is restricted
+to `ADMIN`; `STAFF` and `ADMIN` can manage stock and availability. Variant price
+updates record price history in the same MongoDB transaction.
+
 ## Quality checks
 
 ```powershell

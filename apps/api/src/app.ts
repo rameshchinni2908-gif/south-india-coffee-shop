@@ -7,14 +7,26 @@ import { pinoHttp } from "pino-http";
 import { getDatabaseState, type DatabaseState } from "./config/database.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found-handler.js";
+import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
+import { createAdminProductRouter } from "./routes/admin-product-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
+import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
+import { createProductRouter } from "./routes/product-routes.js";
 import type { AuthService } from "./services/auth-service.js";
+import type { CategoryService } from "./services/category-service.js";
+import type { ProductService } from "./services/product-service.js";
+
+interface CatalogServices {
+  categoryService: CategoryService;
+  productService: ProductService;
+}
 
 interface CreateAppOptions {
   clientUrl: string;
   authService: AuthService;
   isProduction: boolean;
+  catalogServices?: CatalogServices;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -23,6 +35,7 @@ export const createApp = ({
   clientUrl,
   authService,
   isProduction,
+  catalogServices,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -57,6 +70,19 @@ export const createApp = ({
 
   app.use("/api/health", createHealthRouter(databaseState));
   app.use("/api/auth", createAuthRouter({ authService, isProduction }));
+
+  if (catalogServices) {
+    app.use("/api/categories", createCategoryRouter(catalogServices.categoryService));
+    app.use("/api/products", createProductRouter(catalogServices.productService));
+    app.use(
+      "/api/admin/categories",
+      createAdminCategoryRouter(authService, catalogServices.categoryService),
+    );
+    app.use(
+      "/api/admin/products",
+      createAdminProductRouter(authService, catalogServices.productService),
+    );
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);
