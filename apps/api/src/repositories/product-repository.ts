@@ -39,6 +39,7 @@ export interface ProductRepository {
   list(filters: ProductListFilters): Promise<PaginatedResult<ProductRecord>>;
   findById(id: string): Promise<ProductRecord | null>;
   findPublicBySlug(slug: string, activeCategoryIds: string[]): Promise<ProductRecord | null>;
+  findOrderableByIds(ids: string[], activeCategoryIds: string[]): Promise<ProductRecord[]>;
   create(data: ProductWriteData): Promise<ProductRecord>;
   updateById(
     id: string,
@@ -173,6 +174,24 @@ export class MongooseProductRepository implements ProductRepository {
     }).exec();
 
     return product ? toProductRecord(product) : null;
+  }
+
+  public async findOrderableByIds(
+    ids: string[],
+    activeCategoryIds: string[],
+  ): Promise<ProductRecord[]> {
+    if (ids.length === 0 || activeCategoryIds.length === 0) {
+      return [];
+    }
+
+    const products = await ProductModel.find({
+      _id: { $in: ids.map((id) => new Types.ObjectId(id)) },
+      categoryId: { $in: activeCategoryIds.map((id) => new Types.ObjectId(id)) },
+      isActive: true,
+      isArchived: false,
+    }).exec();
+
+    return products.map(toProductRecord);
   }
 
   public async create(data: ProductWriteData): Promise<ProductRecord> {

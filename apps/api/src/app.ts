@@ -12,10 +12,12 @@ import { createAdminProductRouter } from "./routes/admin-product-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
+import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
 import type { AuthService } from "./services/auth-service.js";
 import type { CategoryService } from "./services/category-service.js";
 import type { ProductService } from "./services/product-service.js";
+import type { OrderService } from "./services/order-service.js";
 
 interface CatalogServices {
   categoryService: CategoryService;
@@ -27,6 +29,7 @@ interface CreateAppOptions {
   authService: AuthService;
   isProduction: boolean;
   catalogServices?: CatalogServices;
+  orderService?: OrderService;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -36,6 +39,7 @@ export const createApp = ({
   authService,
   isProduction,
   catalogServices,
+  orderService,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -82,6 +86,10 @@ export const createApp = ({
       "/api/admin/products",
       createAdminProductRouter(authService, catalogServices.productService),
     );
+  }
+
+  if (orderService) {
+    app.use("/api/orders", createOrderRouter(orderService));
   }
 
   app.use(notFoundHandler);

@@ -14,7 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import type { Category } from "../../types/catalog.js";
 import { menuFilterFormSchema, type MenuFilterForm } from "./menu-filter-schema.js";
@@ -38,7 +38,7 @@ export const MenuFilters = ({
     resolver: zodResolver(menuFilterFormSchema),
     defaultValues: values,
   });
-  const selectedCategory = useWatch({ control, name: "category" });
+  const selectedCategory = useWatch({ control, name: "category", defaultValue: "" });
 
   useEffect(() => {
     reset(values);
@@ -85,20 +85,38 @@ export const MenuFilters = ({
             },
           }}
         />
-        <TextField select label="Availability" {...register("available")}>
-          <MenuItem value="true">Available now</MenuItem>
-          <MenuItem value="false">Currently unavailable</MenuItem>
-        </TextField>
-        <TextField select label="Food preference" {...register("vegetarian")}>
-          <MenuItem value="all">All items</MenuItem>
-          <MenuItem value="true">Vegetarian</MenuItem>
-          <MenuItem value="false">Non-vegetarian</MenuItem>
-        </TextField>
-        <TextField select label="Sort by" {...register("sort")}>
-          <MenuItem value="name-asc">Name A–Z</MenuItem>
-          <MenuItem value="createdAt-desc">Newest first</MenuItem>
-          <MenuItem value="updatedAt-desc">Recently updated</MenuItem>
-        </TextField>
+        <Controller
+          control={control}
+          name="available"
+          render={({ field }) => (
+            <TextField select label="Availability" {...field}>
+              <MenuItem value="true">Available now</MenuItem>
+              <MenuItem value="false">Currently unavailable</MenuItem>
+            </TextField>
+          )}
+        />
+        <Controller
+          control={control}
+          name="vegetarian"
+          render={({ field }) => (
+            <TextField select label="Food preference" {...field}>
+              <MenuItem value="all">All items</MenuItem>
+              <MenuItem value="true">Vegetarian</MenuItem>
+              <MenuItem value="false">Non-vegetarian</MenuItem>
+            </TextField>
+          )}
+        />
+        <Controller
+          control={control}
+          name="sort"
+          render={({ field }) => (
+            <TextField select label="Sort by" {...field}>
+              <MenuItem value="name-asc">Name A–Z</MenuItem>
+              <MenuItem value="createdAt-desc">Newest first</MenuItem>
+              <MenuItem value="updatedAt-desc">Recently updated</MenuItem>
+            </TextField>
+          )}
+        />
       </Box>
 
       <Box sx={{ mt: 2.5 }}>

@@ -124,6 +124,10 @@ class FakeProductRepository implements ProductRepository {
     return Promise.resolve(this.product?.slug === slug ? this.product : null);
   }
 
+  public findOrderableByIds(ids: string[]): Promise<ProductRecord[]> {
+    return Promise.resolve(this.product && ids.includes(this.product.id) ? [this.product] : []);
+  }
+
   public create(_data: ProductWriteData): Promise<ProductRecord> {
     return Promise.resolve(this.product ?? createProduct());
   }

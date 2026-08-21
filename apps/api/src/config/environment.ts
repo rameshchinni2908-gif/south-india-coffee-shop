@@ -28,7 +28,7 @@ const environmentSchema = z.object({
     .default("15m"),
   CLIENT_URL: z.string().url().default("http://localhost:5173"),
   SHOP_TIMEZONE: z.string().trim().min(1).default("Asia/Kolkata"),
-  TAX_PERCENTAGE: z.coerce.number().min(0).default(0),
+  TAX_PERCENTAGE: z.coerce.number().min(0).max(100).default(0),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

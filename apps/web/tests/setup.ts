@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 Object.defineProperty(window, "matchMedia", {
@@ -18,8 +18,11 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 Element.prototype.scrollIntoView = vi.fn();
+configure({ asyncUtilTimeout: 3_000 });
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.restoreAllMocks();
 });

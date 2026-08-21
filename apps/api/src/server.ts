@@ -8,10 +8,12 @@ import { createApp } from "./app.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
+import { MongooseOrderRepository } from "./repositories/order-repository.js";
 import { MongooseProductRepository } from "./repositories/product-repository.js";
 import { MongooseUserRepository } from "./repositories/user-repository.js";
 import { createAuthService } from "./services/auth-service.js";
 import { createCategoryService } from "./services/category-service.js";
+import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
 
 const logger = pino();
@@ -42,12 +44,20 @@ const startServer = async (): Promise<void> => {
   });
   const categoryRepository = new MongooseCategoryRepository();
   const categoryService = createCategoryService(categoryRepository);
-  const productService = createProductService(new MongooseProductRepository(), categoryRepository);
+  const productRepository = new MongooseProductRepository();
+  const productService = createProductService(productRepository, categoryRepository);
+  const orderService = createOrderService({
+    orderRepository: new MongooseOrderRepository(),
+    productRepository,
+    categoryRepository,
+    taxPercentage: environment.TAX_PERCENTAGE,
+  });
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
     isProduction: environment.NODE_ENV === "production",
     catalogServices: { categoryService, productService },
+    orderService,
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");

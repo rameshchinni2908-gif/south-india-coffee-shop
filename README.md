@@ -27,6 +27,18 @@ npm run dev:web
 
 Open `http://localhost:5173` to browse the customer menu. Search, category,
 availability, vegetarian, sorting, and pagination state is stored in the URL.
+Available variants can be added to the device-local cart. The `/cart` page
+collects customer and pickup details, while the API reloads current products,
+validates stock, snapshots names and prices, and calculates the final total.
+
+## Pickup orders
+
+- `POST /api/orders`
+
+Orders use `PAY_AT_SHOP`, begin with status `PLACED`, and store money as integer
+paise. Set `TAX_PERCENTAGE` in `apps/api/.env`; keep it at `0` until the shop
+owner confirms the required value. Stock is validated during checkout and will
+be reduced atomically when an order is confirmed in the order-management step.
 
 ## Seed the first admin
 

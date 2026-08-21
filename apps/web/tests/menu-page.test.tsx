@@ -113,6 +113,18 @@ describe("customer menu", () => {
     expect(screen.getByText("1 item")).toBeInTheDocument();
   });
 
+  it("adds an available product variant to the cart", async () => {
+    installSuccessfulFetch();
+    const user = userEvent.setup();
+    renderMenu();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Add Filter Coffee Regular to cart" }),
+    );
+
+    expect(screen.getByLabelText("Cart with 1 item")).toBeInTheDocument();
+  });
+
   it("shows a useful empty state", async () => {
     installSuccessfulFetch([]);
     renderMenu();

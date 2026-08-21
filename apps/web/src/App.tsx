@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { CartProvider } from "./features/cart/CartProvider.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
 
@@ -11,6 +12,18 @@ const MenuPage = lazy(async () => {
   const module = await import("./features/menu/MenuPage.js");
 
   return { default: module.MenuPage };
+});
+
+const CartPage = lazy(async () => {
+  const module = await import("./features/cart/CartPage.js");
+
+  return { default: module.CartPage };
+});
+
+const OrderConfirmationPage = lazy(async () => {
+  const module = await import("./features/checkout/OrderConfirmationPage.js");
+
+  return { default: module.OrderConfirmationPage };
 });
 
 const RouteLoading = () => (
@@ -24,12 +37,16 @@ const RouteLoading = () => (
 );
 
 export const AppRoutes = () => (
-  <Suspense fallback={<RouteLoading />}>
-    <Routes>
-      <Route path="/" element={<MenuPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  </Suspense>
+  <CartProvider>
+    <Suspense fallback={<RouteLoading />}>
+      <Routes>
+        <Route path="/" element={<MenuPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  </CartProvider>
 );
 
 export const App = () => (

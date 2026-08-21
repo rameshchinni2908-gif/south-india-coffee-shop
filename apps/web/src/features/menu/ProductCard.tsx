@@ -1,9 +1,21 @@
+import AddShoppingCartRoundedIcon from "@mui/icons-material/AddShoppingCartRounded";
 import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
-import { Box, Card, CardContent, CardMedia, Chip, Divider, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardMedia,
+  Chip,
+  Divider,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useState } from "react";
 
 import { formatRupees } from "../../lib/currency.js";
 import type { Product } from "../../types/catalog.js";
+import { useCart } from "../cart/use-cart.js";
 
 interface ProductCardProps {
   product: Product;
@@ -12,6 +24,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, categoryName }: ProductCardProps) => {
   const [imageFailed, setImageFailed] = useState(false);
+  const { addItem } = useCart();
   const minimumPrice = Math.min(...product.variants.map((variant) => variant.price));
 
   return (
@@ -131,9 +144,31 @@ export const ProductCard = ({ product, categoryName }: ProductCardProps) => {
                     {isSellable ? "Available" : "Unavailable"}
                   </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                  {formatRupees(variant.price)}
-                </Typography>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 850 }}>
+                    {formatRupees(variant.price)}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!isSellable}
+                    startIcon={<AddShoppingCartRoundedIcon />}
+                    onClick={() =>
+                      addItem({
+                        productId: product.id,
+                        productName: product.name,
+                        variantId: variant.id,
+                        variantName: variant.name,
+                        sku: variant.sku,
+                        unitPrice: variant.price,
+                        stockQuantity: variant.stockQuantity,
+                      })
+                    }
+                    aria-label={`Add ${product.name} ${variant.name} to cart`}
+                  >
+                    Add
+                  </Button>
+                </Stack>
               </Stack>
             );
           })}
