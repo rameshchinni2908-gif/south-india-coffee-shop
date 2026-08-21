@@ -7,16 +7,22 @@ import { pinoHttp } from "pino-http";
 import { getDatabaseState, type DatabaseState } from "./config/database.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found-handler.js";
+import { createAuthRouter } from "./routes/auth-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
+import type { AuthService } from "./services/auth-service.js";
 
 interface CreateAppOptions {
   clientUrl: string;
+  authService: AuthService;
+  isProduction: boolean;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
 
 export const createApp = ({
   clientUrl,
+  authService,
+  isProduction,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -50,6 +56,7 @@ export const createApp = ({
   app.use(express.json({ limit: "100kb" }));
 
   app.use("/api/health", createHealthRouter(databaseState));
+  app.use("/api/auth", createAuthRouter({ authService, isProduction }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -2,11 +2,14 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 
 import { createApp } from "../src/app.js";
+import { unusedAuthService } from "./helpers/test-auth-service.js";
 
 describe("GET /api/health", () => {
   it("returns a healthy response when MongoDB is connected", async () => {
     const app = createApp({
       clientUrl: "http://localhost:5173",
+      authService: unusedAuthService,
+      isProduction: false,
       databaseState: () => "connected",
       enableRequestLogging: false,
     });
@@ -29,6 +32,8 @@ describe("GET /api/health", () => {
   it("returns service unavailable when MongoDB is disconnected", async () => {
     const app = createApp({
       clientUrl: "http://localhost:5173",
+      authService: unusedAuthService,
+      isProduction: false,
       databaseState: () => "disconnected",
       enableRequestLogging: false,
     });

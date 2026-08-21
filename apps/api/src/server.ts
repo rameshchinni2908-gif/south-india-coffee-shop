@@ -7,6 +7,8 @@ import pino from "pino";
 import { createApp } from "./app.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
+import { MongooseUserRepository } from "./repositories/user-repository.js";
+import { createAuthService } from "./services/auth-service.js";
 
 const logger = pino();
 
@@ -29,7 +31,16 @@ const startServer = async (): Promise<void> => {
   await connectDatabase(environment.MONGODB_URI);
   logger.info("MongoDB connection established");
 
-  const app = createApp({ clientUrl: environment.CLIENT_URL });
+  const authService = createAuthService({
+    userRepository: new MongooseUserRepository(),
+    jwtSecret: environment.JWT_SECRET,
+    jwtExpiresIn: environment.JWT_EXPIRES_IN,
+  });
+  const app = createApp({
+    clientUrl: environment.CLIENT_URL,
+    authService,
+    isProduction: environment.NODE_ENV === "production",
+  });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");
   });
