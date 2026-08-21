@@ -17,6 +17,17 @@ The health endpoint is available at `http://localhost:4000/api/health`.
 If the local DNS provider rejects MongoDB Atlas SRV lookups, set
 `MONGODB_DNS_SERVERS=1.1.1.1,8.8.8.8` in `apps/api/.env`.
 
+## Web development
+
+Copy `apps/web/.env.example` to `apps/web/.env`, keep the API running, then run:
+
+```powershell
+npm run dev:web
+```
+
+Open `http://localhost:5173` to browse the customer menu. Search, category,
+availability, vegetarian, sorting, and pagination state is stored in the URL.
+
 ## Seed the first admin
 
 Set `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` in
