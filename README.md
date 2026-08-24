@@ -17,6 +17,38 @@ The health endpoint is available at `http://localhost:4000/api/health`.
 If the local DNS provider rejects MongoDB Atlas SRV lookups, set
 `MONGODB_DNS_SERVERS=1.1.1.1,8.8.8.8` in `apps/api/.env`.
 
+## Docker development
+
+Docker Compose runs the web app, API, and a persistent single-node MongoDB
+replica set. The replica set is required for atomic stock and price-history
+transactions.
+
+1. Copy `apps/api/.env.example` to `apps/api/.env` and replace `JWT_SECRET`.
+2. Copy `apps/web/.env.example` to `apps/web/.env`.
+3. Set the three `SEED_ADMIN_*` values in `apps/api/.env`.
+4. Start the stack:
+
+```powershell
+npm run docker:up
+```
+
+Open `http://localhost:5173`; the API health endpoint is
+`http://localhost:4000/api/health`. On the first run, create the admin account:
+
+```powershell
+docker compose exec api npm run seed:admin
+```
+
+View logs with `npm run docker:logs` and stop the stack with
+`npm run docker:down`. The named MongoDB volume is preserved when the stack is
+stopped.
+
+When running only MongoDB in Docker and the API directly on Windows, use:
+
+```text
+MONGODB_URI=mongodb://localhost:27017/south-india-coffee-shop?replicaSet=rs0&directConnection=true
+```
+
 ## Web development
 
 Copy `apps/web/.env.example` to `apps/web/.env`, keep the API running, then run:
@@ -126,3 +158,40 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+`npm test` includes automated accessibility scans for the customer menu, staff
+sign-in, and admin dashboard. Run only those checks with `npm run test:a11y`.
+Color contrast, screen-reader behavior, keyboard navigation, and mobile zoom
+still require a real-browser/manual accessibility review before production.
+
+GitHub Actions runs Docker configuration validation, formatting, linting, type
+checking, all tests, and production builds for pull requests and pushes to
+`main`.
+
+## Deployment configuration
+
+### Render API
+
+The root `render.yaml` Blueprint creates the Node.js API service, waits for
+`/api/health`, generates `JWT_SECRET`, and runs the idempotent admin seed after
+the first successful deployment.
+
+1. Create a MongoDB Atlas database and restrict access as far as Render permits.
+2. Create a Render Blueprint from this repository's `render.yaml`.
+3. Supply `MONGODB_URI`, a temporary `CLIENT_URL`, and the three
+   `SEED_ADMIN_*` values when prompted. Do not enter them in source files.
+4. Verify the Render `/api/health` URL after deployment.
+
+### Vercel web app
+
+1. Import the same repository into Vercel.
+2. Set the project root directory to `apps/web`; `vercel.json` contains the
+   Vite and SPA rewrite configuration.
+3. Set `VITE_API_BASE_URL` to the public HTTPS Render URL and set
+   `VITE_SHOP_NAME`.
+4. Deploy, then update Render's `CLIENT_URL` to the final Vercel URL and
+   redeploy the API so cookie-based staff access and CORS use the production
+   frontend origin.
+
+Hosted deployments must use MongoDB Atlas. Never copy a local `.env` file into
+Render or Vercel.

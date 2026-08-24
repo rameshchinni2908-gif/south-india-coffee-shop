@@ -56,7 +56,7 @@ const MetricCard = ({
           <Typography variant="overline" color="text.secondary">
             {label}
           </Typography>
-          <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 900 }}>
+          <Typography component="p" variant="h4" sx={{ mt: 0.5, fontWeight: 900 }}>
             {value}
           </Typography>
         </Box>
@@ -232,7 +232,7 @@ export const AdminDashboardPage = () => {
                       color={statusColor(status)}
                       size="small"
                     />
-                    <Typography variant="h4" sx={{ mt: 1.5, fontWeight: 900 }}>
+                    <Typography component="p" variant="h4" sx={{ mt: 1.5, fontWeight: 900 }}>
                       {summary.today.statusCounts[status]}
                     </Typography>
                   </Box>

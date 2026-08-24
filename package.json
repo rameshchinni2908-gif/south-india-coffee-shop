@@ -2,6 +2,10 @@
   "name": "south-india-coffee-shop",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": ">=24"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -9,6 +13,10 @@
   "scripts": {
     "dev:api": "npm run dev --workspace @south-india-coffee-shop/api",
     "dev:web": "npm run dev --workspace @south-india-coffee-shop/web",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs --follow",
+    "test:a11y": "npm run test:a11y --workspace @south-india-coffee-shop/web",
     "seed:admin": "npm run seed:admin --workspace @south-india-coffee-shop/api",
     "lint": "eslint .",
     "format:check": "prettier --check .",

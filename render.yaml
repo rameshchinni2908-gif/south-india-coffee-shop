@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: south-india-coffee-shop-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build --workspace @south-india-coffee-shop/api && npm prune --omit=dev
+    startCommand: npm run start --workspace @south-india-coffee-shop/api
+    initialDeployHook: npm run seed:admin:prod --workspace @south-india-coffee-shop/api
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 30
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/shared/**
+        - package.json
+        - package-lock.json
+        - render.yaml
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: CLIENT_URL
+        sync: false
+      - key: SHOP_TIMEZONE
+        value: Asia/Kolkata
+      - key: TAX_PERCENTAGE
+        value: 0
+      - key: SEED_ADMIN_NAME
+        sync: false
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

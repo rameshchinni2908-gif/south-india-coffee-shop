@@ -1,1 +1,103 @@
-services: {}
+name: south-india-coffee-shop
+
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval "try { const hello = db.hello(); if
+          (hello.isWritablePrimary) { quit(0) }; if (!hello.setName) {
+          rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) };
+          quit(1) } catch (error) { quit(1) }"
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    stop_grace_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    init: true
+    env_file:
+      - path: apps/api/.env
+        required: false
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      MONGODB_URI: mongodb://mongo:27017/south-india-coffee-shop?replicaSet=rs0
+      CLIENT_URL: http://localhost:5173
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/workspace
+      - api_node_modules:/workspace/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4000/api/health').then(async (response) => {
+          const body = await response.json(); process.exit(response.ok &&
+          body.data?.database === 'connected' ? 0 : 1) }).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    init: true
+    command:
+      [
+        "npm",
+        "run",
+        "dev",
+        "--workspace",
+        "@south-india-coffee-shop/web",
+        "--",
+        "--host",
+        "0.0.0.0",
+      ]
+    env_file:
+      - path: apps/web/.env
+        required: false
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/workspace
+      - web_node_modules:/workspace/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5173').then((response) => process.exit(response.ok ? 0: 1)).catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  mongo_data:
+  api_node_modules:
+  web_node_modules:
