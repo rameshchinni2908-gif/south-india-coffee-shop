@@ -66,9 +66,9 @@ const productSchema = new Schema(
     },
     imageUrl: {
       type: String,
-      required: true,
       trim: true,
       maxlength: 2_048,
+      default: "",
     },
     isVegetarian: {
       type: Boolean,
