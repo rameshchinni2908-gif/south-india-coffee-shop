@@ -49,6 +49,20 @@ const staffUser = {
   role: "STAFF",
 };
 
+const adminUser = {
+  ...staffUser,
+  name: "Admin User",
+  email: "admin@example.com",
+  role: "ADMIN",
+};
+
+const managedStaffAccount = {
+  ...staffUser,
+  isActive: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
+
 const emptySummary = {
   generatedAt: "2026-08-21T10:00:00.000Z",
   timezone: "Asia/Kolkata",
@@ -163,6 +177,30 @@ describe("automated accessibility checks", () => {
     const { container } = renderRoute("/admin/dashboard");
 
     await screen.findByText("No active products are below their stock threshold.");
+    await expectNoAutomatedViolations(container);
+  });
+
+  it("finds no detectable violations on staff account management", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation((input) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/auth/me")) {
+          return Promise.resolve(apiResponse({ user: adminUser }));
+        }
+
+        return Promise.resolve(
+          apiResponse(
+            { staffAccounts: [managedStaffAccount] },
+            { page: 1, limit: 12, total: 1, totalPages: 1 },
+          ),
+        );
+      }),
+    );
+    const { container } = renderRoute("/admin/staff");
+
+    await screen.findByRole("heading", { name: "Staff User" });
     await expectNoAutomatedViolations(container);
   });
 });

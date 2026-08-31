@@ -17,6 +17,7 @@ import { createCategoryService } from "./services/category-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
 import { createReportService } from "./services/report-service.js";
+import { createStaffAccountService } from "./services/staff-account-service.js";
 
 const logger = pino();
 
@@ -39,8 +40,9 @@ const startServer = async (): Promise<void> => {
   await connectDatabase(environment.MONGODB_URI);
   logger.info("MongoDB connection established");
 
+  const userRepository = new MongooseUserRepository();
   const authService = createAuthService({
-    userRepository: new MongooseUserRepository(),
+    userRepository,
     jwtSecret: environment.JWT_SECRET,
     jwtExpiresIn: environment.JWT_EXPIRES_IN,
   });
@@ -58,6 +60,7 @@ const startServer = async (): Promise<void> => {
     reportRepository: new MongooseReportRepository(),
     timezone: environment.SHOP_TIMEZONE,
   });
+  const staffAccountService = createStaffAccountService(userRepository);
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -65,6 +68,7 @@ const startServer = async (): Promise<void> => {
     catalogServices: { categoryService, productService },
     orderService,
     reportService,
+    staffAccountService,
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");

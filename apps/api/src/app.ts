@@ -11,6 +11,7 @@ import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
 import { createAdminOrderRouter } from "./routes/admin-order-routes.js";
 import { createAdminProductRouter } from "./routes/admin-product-routes.js";
 import { createAdminReportRouter } from "./routes/admin-report-routes.js";
+import { createAdminStaffAccountRouter } from "./routes/admin-staff-account-routes.js";
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
@@ -21,6 +22,7 @@ import type { CategoryService } from "./services/category-service.js";
 import type { ProductService } from "./services/product-service.js";
 import type { OrderService } from "./services/order-service.js";
 import type { ReportService } from "./services/report-service.js";
+import type { StaffAccountService } from "./services/staff-account-service.js";
 
 interface CatalogServices {
   categoryService: CategoryService;
@@ -34,6 +36,7 @@ interface CreateAppOptions {
   catalogServices?: CatalogServices;
   orderService?: OrderService;
   reportService?: ReportService;
+  staffAccountService?: StaffAccountService;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -45,6 +48,7 @@ export const createApp = ({
   catalogServices,
   orderService,
   reportService,
+  staffAccountService,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -79,6 +83,13 @@ export const createApp = ({
 
   app.use("/api/health", createHealthRouter(databaseState));
   app.use("/api/auth", createAuthRouter({ authService, isProduction }));
+
+  if (staffAccountService) {
+    app.use(
+      "/api/admin/staff-accounts",
+      createAdminStaffAccountRouter(authService, staffAccountService),
+    );
+  }
 
   if (catalogServices) {
     app.use("/api/categories", createCategoryRouter(catalogServices.categoryService));

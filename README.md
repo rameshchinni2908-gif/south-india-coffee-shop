@@ -113,6 +113,11 @@ and ADMIN-only product archival. Staff authentication uses the secure HTTP-only
 cookie issued by the API; credentials and access tokens are not stored in the
 browser.
 
+Administrators can manage accounts at `/admin/staff`. They can create `STAFF`
+or `ADMIN` users, edit names and email addresses, reset passwords, and activate
+or deactivate access. Password hashes are never returned by the API. An
+administrator cannot deactivate or demote their own account.
+
 The authenticated order queue is available at `/admin/orders`. It supports
 search, status filtering, pagination, and the enforced workflow:
 
@@ -152,6 +157,8 @@ Authenticated staff/admin:
 - `GET /api/admin/orders`
 - `PATCH /api/admin/orders/:id/status`
 - `GET /api/admin/reports/summary`
+- `GET|POST /api/admin/staff-accounts` — `ADMIN` only
+- `PATCH /api/admin/staff-accounts/:id` — `ADMIN` only
 
 Prices are integer paise. Product deletion is a soft archive and is restricted
 to `ADMIN`; `STAFF` and `ADMIN` can manage stock and availability. Variant price

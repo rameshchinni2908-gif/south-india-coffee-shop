@@ -2,6 +2,7 @@ import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import PeopleOutlineRoundedIcon from "@mui/icons-material/PeopleOutlineRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import {
@@ -104,6 +105,11 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
             <Button component={Link} to="/admin/products" startIcon={<Inventory2OutlinedIcon />}>
               Products
             </Button>
+            {user.role === "ADMIN" && (
+              <Button component={Link} to="/admin/staff" startIcon={<PeopleOutlineRoundedIcon />}>
+                Staff
+              </Button>
+            )}
           </Stack>
         </Container>
       </Box>

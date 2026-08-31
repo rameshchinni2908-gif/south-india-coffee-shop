@@ -209,6 +209,8 @@ Order items must preserve price and name snapshots so later product updates do n
 - `GET /api/admin/orders`
 - `PATCH /api/admin/orders/:id/status`
 - `GET /api/admin/reports/summary`
+- `GET|POST /api/admin/staff-accounts`
+- `PATCH /api/admin/staff-accounts/:id`
 
 All list endpoints must support appropriate pagination, search, filtering and sorting. Use a consistent response shape:
 
@@ -456,4 +458,3 @@ A feature is complete only when:
 - Environment variables and setup changes are documented.
 - No sensitive data or debug code is committed.
 - The deployed flow is verified when deployment is part of the task.
-

@@ -62,6 +62,12 @@ const AdminDashboardPage = lazy(async () => {
   return { default: module.AdminDashboardPage };
 });
 
+const AdminStaffPage = lazy(async () => {
+  const module = await import("./features/admin/staff/AdminStaffPage.js");
+
+  return { default: module.AdminStaffPage };
+});
+
 const RouteLoading = () => (
   <Box
     role="status"
@@ -86,6 +92,7 @@ export const AppRoutes = () => (
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
+          <Route path="/admin/staff" element={<AdminStaffPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
