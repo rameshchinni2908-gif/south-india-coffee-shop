@@ -8,7 +8,6 @@ services:
     initialDeployHook: npm run seed:admin:prod --workspace @south-india-coffee-shop/api
     healthCheckPath: /api/health
     autoDeployTrigger: checksPass
-    maxShutdownDelaySeconds: 30
     buildFilter:
       paths:
         - apps/api/**
