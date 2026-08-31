@@ -17,6 +17,8 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs --follow",
     "test:a11y": "npm run test:a11y --workspace @south-india-coffee-shop/web",
+    "seed": "npm run seed --workspace @south-india-coffee-shop/api",
+    "seed:catalog": "npm run seed:catalog --workspace @south-india-coffee-shop/api",
     "seed:admin": "npm run seed:admin --workspace @south-india-coffee-shop/api",
     "lint": "eslint .",
     "format:check": "prettier --check .",

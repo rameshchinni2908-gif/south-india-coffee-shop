@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: npm ci --include=dev && npm run build --workspace @south-india-coffee-shop/api && npm prune --omit=dev
     startCommand: npm run start --workspace @south-india-coffee-shop/api
-    initialDeployHook: npm run seed:admin:prod --workspace @south-india-coffee-shop/api
+    initialDeployHook: npm run seed:prod --workspace @south-india-coffee-shop/api
     healthCheckPath: /api/health
     autoDeployTrigger: checksPass
     buildFilter:

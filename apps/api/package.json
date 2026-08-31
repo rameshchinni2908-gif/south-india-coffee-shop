@@ -8,6 +8,10 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "seed": "npm run seed:catalog && npm run seed:admin",
+    "seed:prod": "node dist/scripts/seed-catalog.js && node dist/scripts/seed-admin.js",
+    "seed:catalog": "tsx src/scripts/seed-catalog.ts",
+    "seed:catalog:prod": "node dist/scripts/seed-catalog.js",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "seed:admin:prod": "node dist/scripts/seed-admin.js",
     "build": "tsc -p tsconfig.build.json",

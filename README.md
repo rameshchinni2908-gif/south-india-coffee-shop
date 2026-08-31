@@ -33,10 +33,11 @@ npm run docker:up
 ```
 
 Open `http://localhost:5173`; the API health endpoint is
-`http://localhost:4000/api/health`. On the first run, create the admin account:
+`http://localhost:4000/api/health`. On the first run, create the initial catalog
+and admin account:
 
 ```powershell
-docker compose exec api npm run seed:admin
+docker compose exec api npm run seed
 ```
 
 View logs with `npm run docker:logs` and stop the stack with
@@ -80,17 +81,24 @@ Order confirmation requires MongoDB transaction support. Use MongoDB Atlas or
 a local replica set; a standalone local `mongod` can accept checkout orders but
 cannot atomically confirm them.
 
-## Seed the first admin
+## Seed the initial catalog and first admin
 
 Set `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, and `SEED_ADMIN_PASSWORD` in
 `apps/api/.env`. Use a unique password with 12 to 72 characters, then run:
 
 ```powershell
-npm run seed:admin
+npm run seed
 ```
 
-The command is idempotent: rerunning it with the same email does not create a
-duplicate account.
+The command creates Coffee, Tea, Breakfast, Snacks, and Packaged Products
+categories, five sample products, and the first admin. Sample money values are
+stored as integer paise. Sample products are inactive by default; the shop owner
+must review their details, prices, and stock in the admin screen before
+activating them. The command is idempotent: rerunning it does not duplicate
+records or overwrite staff changes to existing categories, products, prices,
+or stock.
+
+Use `npm run seed:catalog` or `npm run seed:admin` when only one part is needed.
 
 ## Authentication endpoints
 
@@ -186,8 +194,8 @@ Render after seeding.
 ### Render API
 
 The root `render.yaml` Blueprint creates the Node.js API service, waits for
-`/api/health`, generates `JWT_SECRET`, and runs the idempotent admin seed after
-the first successful deployment.
+`/api/health`, generates `JWT_SECRET`, and runs the idempotent catalog and admin
+seed after the first successful deployment.
 
 1. Create a MongoDB Atlas database and restrict access as far as Render permits.
 2. Create a Render Blueprint from this repository's `render.yaml`.
@@ -216,9 +224,9 @@ Render or Vercel.
 2. Recreate the Render service from `render.yaml` and restore its environment
    variables from an approved password manager or other secure backup. Never
    recover secrets from Git history.
-3. If the admin user is absent, temporarily set the three `SEED_ADMIN_*`
-   variables, run `npm run seed:admin` once, verify sign-in, and remove those
-   variables from Render.
+3. If the catalog or admin user is absent, temporarily set the three
+   `SEED_ADMIN_*` variables, run `npm run seed` once, verify the catalog and
+   sign-in, and remove those variables from Render.
 4. Reimport `apps/web` into Vercel, restore `VITE_API_BASE_URL` and
    `VITE_SHOP_NAME`, and deploy.
 5. Set Render's `CLIENT_URL` to the restored Vercel origin, redeploy the API,
