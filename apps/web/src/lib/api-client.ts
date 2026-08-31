@@ -12,6 +12,18 @@ export class ApiClientError extends Error {
   }
 }
 
+export const ADMIN_SESSION_EXPIRED_EVENT = "south-india-coffee-shop:admin-session-expired";
+
+const readJsonResponse = async <TData, TMeta>(
+  response: Response,
+): Promise<ApiResponse<TData, TMeta> | null> => {
+  try {
+    return (await response.json()) as ApiResponse<TData, TMeta>;
+  } catch {
+    return null;
+  }
+};
+
 const apiRequest = async <TData, TMeta = Record<string, never>>(
   path: string,
   options: RequestInit,
@@ -24,13 +36,20 @@ const apiRequest = async <TData, TMeta = Record<string, never>>(
       ...options.headers,
     },
   });
-  const payload = (await response.json()) as ApiResponse<TData, TMeta>;
+  const payload = await readJsonResponse<TData, TMeta>(response);
 
-  if (!response.ok || !payload.success) {
+  if (response.status === 401 && path.startsWith("/api/admin/")) {
+    window.dispatchEvent(new Event(ADMIN_SESSION_EXPIRED_EVENT));
+  }
+
+  if (!response.ok || !payload?.success) {
     throw new ApiClientError(
       response.status,
-      payload.error?.code ?? "REQUEST_FAILED",
-      payload.error?.message ?? "The request could not be completed",
+      payload?.error?.code ?? "REQUEST_FAILED",
+      payload?.error?.message ??
+        (response.status >= 500
+          ? "The service is temporarily unavailable. Please try again."
+          : "The request could not be completed"),
     );
   }
 

@@ -122,7 +122,7 @@ export const AdminProductsPage = () => {
               startIcon={<CategoryOutlinedIcon />}
               onClick={() => setCategoryOpen(true)}
             >
-              Add category
+              Manage categories
             </Button>
             <Button
               variant="contained"
@@ -357,7 +357,9 @@ export const AdminProductsPage = () => {
           onClose={() => setAvailabilityProduct(null)}
         />
       )}
-      {categoryOpen && <CategoryDialog onClose={() => setCategoryOpen(false)} />}
+      {categoryOpen && (
+        <CategoryDialog categories={categories} onClose={() => setCategoryOpen(false)} />
+      )}
       <Dialog
         open={Boolean(archiveTarget)}
         onClose={() => setArchiveTarget(null)}

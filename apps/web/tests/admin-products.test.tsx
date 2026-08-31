@@ -110,7 +110,10 @@ const renderRoute = (initialEntry: string) => {
   );
 };
 
-const installAdminFetch = (role: "ADMIN" | "STAFF" = "ADMIN") => {
+const installAdminFetch = (
+  role: "ADMIN" | "STAFF" = "ADMIN",
+  configuration: { expireOnArchive?: boolean } = {},
+) => {
   const fetchMock = vi.fn<typeof fetch>().mockImplementation((input, options) => {
     const url = String(input);
     const method = options?.method ?? "GET";
@@ -121,7 +124,13 @@ const installAdminFetch = (role: "ADMIN" | "STAFF" = "ADMIN") => {
     if (url.endsWith("/api/admin/reports/summary")) {
       return Promise.resolve(apiResponse({ summary: dashboardSummary }));
     }
-    if (url.includes("/api/admin/categories")) {
+    if (url.endsWith(`/api/admin/categories/${CATEGORY_ID}`) && method === "PATCH") {
+      return Promise.resolve(apiResponse({ category: { ...category, isActive: false } }));
+    }
+    if (url.endsWith("/api/admin/categories") && method === "POST") {
+      return Promise.resolve(apiResponse({ category }, 201));
+    }
+    if (url.includes("/api/admin/categories") && method === "GET") {
       return Promise.resolve(
         apiResponse({ categories: [category] }, 200, {
           page: 1,
@@ -140,6 +149,15 @@ const installAdminFetch = (role: "ADMIN" | "STAFF" = "ADMIN") => {
     }
     if (url.endsWith("/api/admin/products") && method === "POST") {
       return Promise.resolve(apiResponse({ product }));
+    }
+    if (
+      url.endsWith(`/api/admin/products/${PRODUCT_ID}`) &&
+      method === "DELETE" &&
+      configuration.expireOnArchive
+    ) {
+      return Promise.resolve(
+        apiError(401, "AUTHENTICATION_REQUIRED", "Authentication is required"),
+      );
     }
     if (url.includes("/api/admin/products") && method === "GET") {
       return Promise.resolve(
@@ -267,5 +285,42 @@ describe("admin product management", () => {
       expect(body.name).toBe("Masala Tea");
       expect(body.variants[0]).toMatchObject({ price: 4550, stockQuantity: 10 });
     });
+  });
+
+  it("edits category visibility through the management dialog", async () => {
+    const fetchMock = installAdminFetch("ADMIN");
+    const visitor = userEvent.setup();
+    renderRoute("/admin/products");
+
+    await visitor.click(await screen.findByRole("button", { name: "Manage categories" }));
+    await visitor.click(screen.getByRole("button", { name: "Edit Coffee" }));
+    await visitor.click(screen.getByRole("checkbox", { name: "Active on customer menu" }));
+    await visitor.click(screen.getByRole("button", { name: "Save category" }));
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([input, options]) =>
+          String(input).endsWith(`/api/admin/categories/${CATEGORY_ID}`) &&
+          options?.method === "PATCH",
+      );
+
+      expect(patchCall).toBeDefined();
+      expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({
+        name: "Coffee",
+        displayOrder: 1,
+        isActive: false,
+      });
+    });
+  });
+
+  it("returns to sign in when an admin mutation finds an expired session", async () => {
+    installAdminFetch("ADMIN", { expireOnArchive: true });
+    const visitor = userEvent.setup();
+    renderRoute("/admin/products");
+
+    await visitor.click(await screen.findByRole("button", { name: "Archive" }));
+    await visitor.click(screen.getByRole("button", { name: "Archive product" }));
+
+    expect(await screen.findByRole("heading", { name: "Staff sign in" })).toBeInTheDocument();
   });
 });

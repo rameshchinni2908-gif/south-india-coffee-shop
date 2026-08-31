@@ -17,8 +17,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 
+import { ADMIN_SESSION_EXPIRED_EVENT } from "../../../lib/api-client.js";
 import type { StaffUser } from "../../../types/auth.js";
 import { logout } from "../auth/auth-api.js";
 import { AUTH_QUERY_KEY } from "../auth/auth-query.js";
@@ -26,6 +28,18 @@ import { AUTH_QUERY_KEY } from "../auth/auth-query.js";
 export const AdminLayout = ({ user }: { user: StaffUser }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      queryClient.removeQueries({ queryKey: AUTH_QUERY_KEY });
+      navigate("/admin/login", { replace: true });
+    };
+
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleExpiredSession);
+
+    return () => window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, handleExpiredSession);
+  }, [navigate, queryClient]);
+
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {

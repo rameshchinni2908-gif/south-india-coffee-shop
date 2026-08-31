@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import { Error as MongooseError } from "mongoose";
 
 import { HttpError } from "./http-error.js";
 
@@ -10,7 +11,9 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, request, respo
       ? error
       : isDuplicateKeyError
         ? new HttpError(409, "DUPLICATE_RESOURCE", "A unique value is already in use")
-        : new HttpError(500, "INTERNAL_SERVER_ERROR", "An unexpected error occurred");
+        : error instanceof MongooseError.ValidationError
+          ? new HttpError(400, "VALIDATION_ERROR", "The submitted data is invalid")
+          : new HttpError(500, "INTERNAL_SERVER_ERROR", "An unexpected error occurred");
 
   if (httpError.statusCode >= 500) {
     request.log.error({ err: error }, "Request failed");

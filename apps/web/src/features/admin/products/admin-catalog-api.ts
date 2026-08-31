@@ -106,3 +106,12 @@ export const createCategory = async (input: CategoryInput): Promise<Category> =>
 
   return response.data.category;
 };
+
+export const updateCategory = async (id: string, input: CategoryInput): Promise<Category> => {
+  const response = await apiPatch<{ category: Category }, CategoryInput>(
+    `/api/admin/categories/${id}`,
+    input,
+  );
+
+  return response.data.category;
+};
