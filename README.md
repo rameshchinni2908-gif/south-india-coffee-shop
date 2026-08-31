@@ -170,6 +170,19 @@ checking, all tests, and production builds for pull requests and pushes to
 
 ## Deployment configuration
 
+### Live production
+
+- Frontend: <https://south-india-coffee-shop-web.vercel.app>
+- Admin sign-in: <https://south-india-coffee-shop-web.vercel.app/admin/login>
+- API: <https://south-india-coffee-shop-api.onrender.com>
+- Health check: <https://south-india-coffee-shop-api.onrender.com/api/health>
+
+The production API uses MongoDB Atlas. Render permits only its documented
+Oregon outbound ranges in the Atlas network access list; local developer IPs
+should be temporary and removed after maintenance. The initial admin and base
+categories have been seeded. The `SEED_ADMIN_*` values are not retained in
+Render after seeding.
+
 ### Render API
 
 The root `render.yaml` Blueprint creates the Node.js API service, waits for
@@ -195,3 +208,23 @@ the first successful deployment.
 
 Hosted deployments must use MongoDB Atlas. Never copy a local `.env` file into
 Render or Vercel.
+
+### Deployment recovery
+
+1. Restore or recreate the Atlas cluster and database user, then configure the
+   minimum Render network access required.
+2. Recreate the Render service from `render.yaml` and restore its environment
+   variables from an approved password manager or other secure backup. Never
+   recover secrets from Git history.
+3. If the admin user is absent, temporarily set the three `SEED_ADMIN_*`
+   variables, run `npm run seed:admin` once, verify sign-in, and remove those
+   variables from Render.
+4. Reimport `apps/web` into Vercel, restore `VITE_API_BASE_URL` and
+   `VITE_SHOP_NAME`, and deploy.
+5. Set Render's `CLIENT_URL` to the restored Vercel origin, redeploy the API,
+   and verify health, CORS, staff sign-in, catalog access, and a test pickup
+   order before reopening the shop.
+
+Render's free service can sleep after inactivity, so the first API request may
+take longer. Atlas backups and point-in-time recovery depend on the selected
+Atlas plan; verify the current provider capabilities before relying on them.
