@@ -28,8 +28,7 @@ services:
       dockerfile: apps/api/Dockerfile
     init: true
     env_file:
-      - path: apps/api/.env
-        required: false
+      - apps/api/.env
     environment:
       NODE_ENV: development
       PORT: 4000
@@ -74,8 +73,7 @@ services:
         "0.0.0.0",
       ]
     env_file:
-      - path: apps/web/.env
-        required: false
+      - apps/web/.env
     environment:
       VITE_API_BASE_URL: http://localhost:4000
     ports:
