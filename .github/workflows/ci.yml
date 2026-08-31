@@ -38,7 +38,14 @@ jobs:
           cp apps/web/.env.example apps/web/.env
 
       - name: Validate Docker Compose
-        run: docker compose config
+        run: |
+          if ! compose_output=$(docker compose config 2>&1); then
+            compose_output=${compose_output//'%'/'%25'}
+            compose_output=${compose_output//$'\n'/'%0A'}
+            compose_output=${compose_output//$'\r'/'%0D'}
+            echo "::error title=Docker Compose validation failed::$compose_output"
+            exit 1
+          fi
 
       - name: Check formatting
         run: npm run format:check
