@@ -54,6 +54,8 @@ export const MenuFilters = ({
         border: "1px solid",
         borderColor: "rgba(91, 50, 29, 0.14)",
         boxShadow: "0 18px 50px rgba(74, 37, 20, 0.07)",
+        animation: "section-enter 460ms cubic-bezier(.2,.75,.25,1) both",
+        "@media (prefers-reduced-motion: reduce)": { animation: "none" },
       }}
     >
       <Stack direction="row" spacing={1} sx={{ mb: 2.5, alignItems: "center" }}>
@@ -66,7 +68,11 @@ export const MenuFilters = ({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "minmax(260px, 1.6fr) repeat(3, 1fr)" },
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "minmax(260px, 1.6fr) repeat(3, 1fr)",
+          },
           gap: 1.5,
         }}
       >
@@ -123,7 +129,22 @@ export const MenuFilters = ({
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 750 }}>
           CATEGORY
         </Typography>
-        <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 1, flexWrap: "wrap" }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            mt: 1,
+            mx: { xs: -2, sm: 0 },
+            px: { xs: 2, sm: 0 },
+            pb: { xs: 0.75, sm: 0 },
+            flexWrap: { xs: "nowrap", sm: "wrap" },
+            overflowX: { xs: "auto", sm: "visible" },
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+            "& .MuiChip-root": { flex: "0 0 auto" },
+          }}
+        >
           <Chip
             label="All"
             clickable
@@ -145,11 +166,26 @@ export const MenuFilters = ({
         </Stack>
       </Box>
 
-      <Stack direction="row" spacing={1.25} sx={{ mt: 3, justifyContent: "flex-end" }}>
-        <Button type="button" color="inherit" onClick={onClear}>
+      <Stack
+        direction={{ xs: "column-reverse", sm: "row" }}
+        spacing={1.25}
+        sx={{ mt: 3, justifyContent: "flex-end" }}
+      >
+        <Button
+          type="button"
+          color="inherit"
+          variant="outlined"
+          onClick={onClear}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
           Clear
         </Button>
-        <Button type="submit" variant="contained" startIcon={<SearchRoundedIcon />}>
+        <Button
+          type="submit"
+          variant="contained"
+          startIcon={<SearchRoundedIcon />}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
           Apply filters
         </Button>
       </Stack>

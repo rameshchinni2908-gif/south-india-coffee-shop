@@ -35,7 +35,7 @@ export const theme = createTheme({
     h2: {
       fontFamily: 'Georgia, "Times New Roman", serif',
       fontWeight: 700,
-      fontSize: "clamp(2.5rem, 7vw, 5.25rem)",
+      fontSize: "clamp(2.25rem, 9vw, 5.25rem)",
       lineHeight: 0.98,
       letterSpacing: "-0.045em",
     },
@@ -59,6 +59,21 @@ export const theme = createTheme({
         root: {
           borderRadius: 999,
           minHeight: 44,
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          minWidth: 44,
+          minHeight: 44,
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          minHeight: 36,
         },
       },
     },

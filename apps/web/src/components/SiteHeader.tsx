@@ -1,70 +1,32 @@
-import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import {
-  AppBar,
-  Badge,
-  Box,
-  Button,
-  Chip,
-  Container,
-  IconButton,
-  Toolbar,
-  Typography,
-} from "@mui/material";
+import { AppBar, Badge, Button, Chip, Container, IconButton, Toolbar } from "@mui/material";
 import { Link } from "react-router-dom";
 
-import { environment } from "../config/environment.js";
 import { useCart } from "../features/cart/use-cart.js";
+import { BrandLockup } from "./BrandLockup.js";
 
 export const SiteHeader = () => {
   const { itemCount } = useCart();
 
   return (
     <AppBar
-      position="static"
+      position="sticky"
       elevation={0}
       color="transparent"
-      sx={{ borderBottom: "1px solid", borderColor: "rgba(91, 50, 29, 0.12)" }}
+      sx={{
+        top: 0,
+        pt: "env(safe-area-inset-top)",
+        zIndex: (theme) => theme.zIndex.appBar,
+        borderBottom: "1px solid",
+        borderColor: "rgba(91, 50, 29, 0.12)",
+        bgcolor: "rgba(255, 253, 248, 0.91)",
+        backdropFilter: "blur(16px)",
+      }}
     >
-      <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ minHeight: { xs: 72, md: 82 } }}>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.25,
-              minWidth: 0,
-              color: "inherit",
-              textDecoration: "none",
-            }}
-          >
-            <Box
-              aria-hidden="true"
-              sx={{
-                width: 42,
-                height: 42,
-                borderRadius: "50%",
-                bgcolor: "primary.main",
-                color: "common.white",
-                display: "grid",
-                placeItems: "center",
-                flex: "0 0 auto",
-              }}
-            >
-              <CoffeeRoundedIcon />
-            </Box>
-            <Typography
-              variant="h6"
-              component="span"
-              noWrap
-              sx={{ fontWeight: 850, letterSpacing: "-0.025em" }}
-            >
-              {environment.shopName}
-            </Typography>
-          </Box>
+      <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 3 } }}>
+        <Toolbar disableGutters sx={{ minHeight: { xs: 64, sm: 74, md: 78 } }}>
+          <BrandLockup />
           <Chip
             label="Pickup · Pay at shop"
             size="small"
@@ -90,7 +52,12 @@ export const SiteHeader = () => {
             to="/track-order"
             color="primary"
             aria-label="Track an order"
-            sx={{ ml: "auto", display: { xs: "inline-flex", md: "none" } }}
+            sx={{
+              ml: { xs: "auto", sm: 1 },
+              width: 44,
+              height: 44,
+              display: { xs: "inline-flex", md: "none" },
+            }}
           >
             <ReceiptLongOutlinedIcon />
           </IconButton>
@@ -99,7 +66,7 @@ export const SiteHeader = () => {
             to="/cart"
             color="primary"
             aria-label={`Cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-            sx={{ ml: 1 }}
+            sx={{ ml: 0.5, width: 44, height: 44 }}
           >
             <Badge badgeContent={itemCount} color="secondary" max={99}>
               <ShoppingBagOutlinedIcon />

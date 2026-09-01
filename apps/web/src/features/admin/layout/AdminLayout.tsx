@@ -1,4 +1,3 @@
-import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -15,12 +14,12 @@ import {
   IconButton,
   Stack,
   Toolbar,
-  Typography,
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 
+import { BrandLockup } from "../../../components/BrandLockup.js";
 import { ADMIN_SESSION_EXPIRED_EVENT } from "../../../lib/api-client.js";
 import type { StaffUser } from "../../../types/auth.js";
 import { logout } from "../auth/auth-api.js";
@@ -53,22 +52,19 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
     <Box sx={{ minHeight: "100vh", bgcolor: "#f7f2e9" }}>
       <AppBar position="static" elevation={0} sx={{ bgcolor: "primary.dark" }}>
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ minHeight: 72, gap: 2 }}>
-            <CoffeeRoundedIcon aria-hidden="true" />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h6" noWrap sx={{ fontWeight: 850 }}>
-                Coffee Shop Admin
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                Shop operations
-              </Typography>
-            </Box>
+          <Toolbar disableGutters sx={{ minHeight: { xs: 64, sm: 72 }, gap: 2 }}>
+            <BrandLockup inverse contextLabel="Admin workspace" />
             <Stack
               direction="row"
               spacing={1}
               sx={{ ml: "auto", alignItems: "center", display: { xs: "none", sm: "flex" } }}
             >
-              <Chip label={`${user.name} · ${user.role}`} color="secondary" size="small" />
+              <Chip
+                label={`${user.name} · ${user.role}`}
+                color="secondary"
+                size="small"
+                sx={{ display: { sm: "none", md: "flex" } }}
+              />
               <Button component={Link} to="/" color="inherit" startIcon={<StorefrontRoundedIcon />}>
                 Customer menu
               </Button>
@@ -95,7 +91,17 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
       </AppBar>
       <Box sx={{ bgcolor: "background.paper", borderBottom: "1px solid", borderColor: "divider" }}>
         <Container maxWidth="xl">
-          <Stack direction="row" spacing={1} sx={{ py: 1, overflowX: "auto" }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              py: 1,
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": { display: "none" },
+              "& .MuiButton-root": { flex: "0 0 auto" },
+            }}
+          >
             <Button component={Link} to="/admin/dashboard" startIcon={<DashboardOutlinedIcon />}>
               Dashboard
             </Button>

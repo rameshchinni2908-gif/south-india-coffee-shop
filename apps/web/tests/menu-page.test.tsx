@@ -111,6 +111,13 @@ describe("customer menu", () => {
     expect(screen.getByText("Available")).toBeInTheDocument();
     expect(screen.getAllByText(/₹45/).length).toBeGreaterThan(0);
     expect(screen.getByText("1 item")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "JRG South India Coffee Shop home" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Coffee category presentation" })).toHaveAttribute(
+      "src",
+      "/images/categories/coffee.jpg",
+    );
   });
 
   it("makes the menu results focusable for the skip link", async () => {

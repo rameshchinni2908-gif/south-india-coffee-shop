@@ -13,8 +13,8 @@ import { ProductCard } from "./ProductCard.js";
 
 const PAGE_SIZE = 12;
 
-const getCategoryName = (categories: Category[], categoryId: string): string | undefined =>
-  categories.find((category) => category.id === categoryId)?.name;
+const getCategory = (categories: Category[], categoryId: string): Category | undefined =>
+  categories.find((category) => category.id === categoryId);
 
 export const MenuPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -89,7 +89,7 @@ export const MenuPage = () => {
       <SiteHeader />
       <MenuHero />
 
-      <Box component="main" id="menu-results" tabIndex={-1} sx={{ py: { xs: 5, md: 8 } }}>
+      <Box component="main" id="menu-results" tabIndex={-1} sx={{ py: { xs: 4, md: 8 } }}>
         <Container maxWidth="lg">
           <MenuFilters
             categories={categories}
@@ -145,16 +145,22 @@ export const MenuPage = () => {
                     sm: "repeat(2, minmax(0, 1fr))",
                     lg: "repeat(3, minmax(0, 1fr))",
                   },
-                  gap: 2.5,
+                  gap: { xs: 2, sm: 2.5 },
                 }}
               >
-                {productsQuery.data.products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    categoryName={getCategoryName(categories, product.categoryId)}
-                  />
-                ))}
+                {productsQuery.data.products.map((product, index) => {
+                  const category = getCategory(categories, product.categoryId);
+
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      categoryName={category?.name}
+                      categorySlug={category?.slug}
+                      animationOrder={index}
+                    />
+                  );
+                })}
               </Box>
 
               {productsQuery.data.meta.totalPages > 1 && (
@@ -176,7 +182,13 @@ export const MenuPage = () => {
 
       <Box
         component="footer"
-        sx={{ py: 4, borderTop: "1px solid", borderColor: "divider", bgcolor: "#f5eadb" }}
+        sx={{
+          pt: 4,
+          pb: "calc(32px + env(safe-area-inset-bottom))",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "#f5eadb",
+        }}
       >
         <Container maxWidth="lg">
           <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>

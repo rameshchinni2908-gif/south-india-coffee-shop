@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import {
   Alert,
@@ -16,7 +15,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { environment } from "../../../config/environment.js";
+import { BrandLockup } from "../../../components/BrandLockup.js";
 import { ApiClientError } from "../../../lib/api-client.js";
 import { login } from "./auth-api.js";
 import { AUTH_QUERY_KEY } from "./auth-query.js";
@@ -70,30 +69,10 @@ export const AdminLoginPage = () => {
           sx={{ p: { xs: 3, sm: 4 }, border: "1px solid", borderColor: "divider" }}
         >
           <Stack spacing={2.5}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-              <Box
-                aria-hidden="true"
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: "50%",
-                  bgcolor: "primary.main",
-                  color: "common.white",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
-                <CoffeeRoundedIcon />
-              </Box>
-              <Box>
-                <Typography variant="overline" color="secondary.dark">
-                  {environment.shopName}
-                </Typography>
-                <Typography component="h1" variant="h5" sx={{ fontWeight: 850 }}>
-                  Staff sign in
-                </Typography>
-              </Box>
-            </Stack>
+            <BrandLockup contextLabel="Staff access" />
+            <Typography component="h1" variant="h5" sx={{ fontWeight: 850 }}>
+              Staff sign in
+            </Typography>
 
             <Typography color="text.secondary">
               Sign in with the staff account created by the admin seed command.
