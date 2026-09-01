@@ -233,17 +233,21 @@ order, active product, category, staff account, or price was changed.
 
 ### Docker verification status
 
-CI validates `docker compose config --quiet`, but the full local Compose runtime
-check remains pending on the current verification computer because firmware
-virtualization and WSL 2 are not enabled. After enabling them, run
-`npm run docker:up`, wait for all three services to become healthy, verify both
-local URLs, restart the stack without `--volumes`, and confirm MongoDB data still
-exists. Do not use `docker compose down --volumes` unless intentionally deleting
-the local database.
+GitHub Actions validates the Compose configuration and runs the complete stack
+on a Linux Docker runner. The job builds and starts MongoDB, the API, and the web
+app; waits for their health checks; verifies both HTTP endpoints; restarts the
+stack without deleting its named volumes; and confirms a MongoDB marker survives
+the restart.
 
-GitHub Actions runs Docker configuration validation, formatting, linting, type
-checking, all tests, and production builds for pull requests and pushes to
-`main`.
+The equivalent local runtime check remains pending on the current verification
+computer because firmware virtualization and WSL 2 are not enabled. After
+enabling them, run `npm run docker:up` and repeat the health and persistence
+checks locally. Do not use `docker compose down --volumes` unless intentionally
+deleting the local database.
+
+GitHub Actions runs Docker configuration and runtime verification, formatting,
+linting, type checking, all tests, and production builds for pull requests and
+pushes to `main`.
 
 ## Deployment configuration
 
