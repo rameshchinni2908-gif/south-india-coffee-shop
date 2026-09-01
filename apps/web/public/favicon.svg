@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="South India Coffee Shop favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f7d7a8" />
+      <stop offset="100%" stop-color="#d28a4a" />
+    </linearGradient>
+    <linearGradient id="cup" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff5e8" />
+      <stop offset="100%" stop-color="#f0c08a" />
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="#4a2514" />
+  <circle cx="64" cy="64" r="45" fill="url(#bg)" opacity="0.15" />
+
+  <path d="M38 46h42c8 0 14 6 14 14v8c0 15-12 27-27 27H53c-15 0-27-12-27-27v-8c0-8 6-14 14-14z" fill="url(#cup)"/>
+  <path d="M94 52h8c8 0 14 6 14 14 0 9-7 16-16 16h-6V52z" fill="#8b4e2d"/>
+  <path d="M40 46h42c0-8-7-14-14-14h-14c-8 0-14 6-14 14z" fill="#f4dfbf" opacity="0.9"/>
+
+  <path d="M52 30c-4 8-6 13-6 18" stroke="#f4dfbf" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <path d="M64 24c-3 9-4 14-4 20" stroke="#f4dfbf" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <path d="M76 30c-4 8-6 13-6 18" stroke="#f4dfbf" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.9"/>
+
+  <path d="M42 83h38c3 0 6 2 6 6v4H36v-4c0-4 3-6 6-6z" fill="#6d3a1d"/>
+  <path d="M35 92h48" stroke="#f6ead5" stroke-width="6" stroke-linecap="round"/>
+</svg>
