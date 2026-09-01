@@ -196,6 +196,21 @@ Edge, Firefox, real mobile Safari/Chrome, screen readers, and browser zoom must
 still be checked on their native platforms before calling cross-browser QA
 complete.
 
+### Production regression and test data
+
+The final production regression was run on 1 September 2026. HTTPS health and
+Atlas connectivity, public catalog responses, authentication failures, CORS,
+customer menu rendering, SPA route refreshes, admin reporting, product stock,
+order tracking, and application-origin browser logs passed. The active catalog
+remained at two products and its stock values were unchanged by the audit.
+
+Earlier production verification records are intentionally retained as clearly
+labelled `TEST DATA` because orders and price history are historical records.
+Their two test products are archived, both price changes remain recorded, and
+all four test orders are terminal: two completed and two cancelled. The one
+stale placed test order was cancelled during the final cleanup. No real customer
+order, active product, category, staff account, or price was changed.
+
 GitHub Actions runs Docker configuration validation, formatting, linting, type
 checking, all tests, and production builds for pull requests and pushes to
 `main`.
