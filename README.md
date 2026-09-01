@@ -72,10 +72,11 @@ mobile number used at checkout.
 - `POST /api/orders/track`
 
 Orders use `PAY_AT_SHOP`, begin with status `PLACED`, and store money as integer
-paise. Set `TAX_PERCENTAGE` in `apps/api/.env`; keep it at `0` until the shop
-owner confirms the required value. Stock is validated during checkout and
-reduced in a MongoDB transaction when staff confirm an order. Cancelling a
-confirmed order restores its stock in the same transaction.
+paise. The shop owner confirmed `TAX_PERCENTAGE=0` for the current release on
+1 September 2026. Local examples and the Render Blueprint therefore use `0`;
+change it only after the owner confirms a new value. Stock is validated during
+checkout and reduced in a MongoDB transaction when staff confirm an order.
+Cancelling a confirmed order restores its stock in the same transaction.
 
 Order confirmation requires MongoDB transaction support. Use MongoDB Atlas or
 a local replica set; a standalone local `mongod` can accept checkout orders but

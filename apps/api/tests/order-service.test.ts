@@ -252,12 +252,13 @@ class FakeOrderRepository implements OrderRepository {
 const createService = (
   productRepository = new FakeProductRepository(),
   orderRepository = new FakeOrderRepository(),
+  taxPercentage = 5,
 ) => ({
   service: createOrderService({
     orderRepository,
     productRepository,
     categoryRepository: new FakeCategoryRepository(),
-    taxPercentage: 5,
+    taxPercentage,
     now: () => NOW,
     generateOrderNumber: () => "SIC-20260821-ABC123",
   }),
@@ -296,6 +297,18 @@ describe("order service", () => {
       unitPrice: 4500,
       quantity: 2,
       lineTotal: 9000,
+    });
+  });
+
+  it("does not add tax when the confirmed tax percentage is zero", async () => {
+    const { service } = createService(new FakeProductRepository(), new FakeOrderRepository(), 0);
+
+    const order = await service.create(validInput);
+
+    expect(order).toMatchObject({
+      subtotal: 9000,
+      taxAmount: 0,
+      totalAmount: 9000,
     });
   });
 
