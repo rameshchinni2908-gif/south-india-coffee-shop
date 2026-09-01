@@ -2,13 +2,32 @@
 
 Monorepo for the South India Coffee Shop application.
 
-## API development
+## Prerequisites
 
-Copy `apps/api/.env.example` to `apps/api/.env`, ensure MongoDB is available at
-`MONGODB_URI`, then run:
+- Git
+- Node.js 24, matching `.nvmrc` and the hosting configuration
+- npm, using the version recorded by `packageManager` in `package.json`
+- Docker Desktop with Linux containers, WSL 2, and firmware virtualization for
+  the Docker workflow
+
+## First-time setup
 
 ```powershell
-npm install
+git clone https://github.com/rameshchinni2908-gif/south-india-coffee-shop.git
+Set-Location south-india-coffee-shop
+npm ci
+Copy-Item apps/api/.env.example apps/api/.env
+Copy-Item apps/web/.env.example apps/web/.env
+```
+
+Replace only the placeholder values in the local `.env` files. They are ignored
+by Git; never place real credentials in an example file or commit them.
+
+## API development
+
+Ensure MongoDB is available at the configured `MONGODB_URI`, then run:
+
+```powershell
 npm run dev:api
 ```
 
@@ -23,9 +42,10 @@ Docker Compose runs the web app, API, and a persistent single-node MongoDB
 replica set. The replica set is required for atomic stock and price-history
 transactions.
 
-1. Copy `apps/api/.env.example` to `apps/api/.env` and replace `JWT_SECRET`.
-2. Copy `apps/web/.env.example` to `apps/web/.env`.
-3. Set the three `SEED_ADMIN_*` values in `apps/api/.env`.
+1. Use the local environment files created during first-time setup.
+2. Replace `JWT_SECRET` and set the three `SEED_ADMIN_*` values in
+   `apps/api/.env`.
+3. Keep `apps/web/.env` pointed at `http://localhost:4000`.
 4. Start the stack:
 
 ```powershell
@@ -111,8 +131,8 @@ The staff interface is available at `http://localhost:5173/admin/login`. After
 sign-in, `/admin/products` supports category creation, product and variant
 creation/editing, activation, price changes, stock and availability updates,
 and ADMIN-only product archival. Staff authentication uses the secure HTTP-only
-cookie issued by the API; credentials and access tokens are not stored in the
-browser.
+cookie issued by the API; the token is not exposed to application JavaScript or
+stored in `localStorage` or `sessionStorage`.
 
 Administrators can manage accounts at `/admin/staff`. They can create `STAFF`
 or `ADMIN` users, edit names and email addresses, reset passwords, and activate
@@ -211,6 +231,16 @@ all four test orders are terminal: two completed and two cancelled. The one
 stale placed test order was cancelled during the final cleanup. No real customer
 order, active product, category, staff account, or price was changed.
 
+### Docker verification status
+
+CI validates `docker compose config --quiet`, but the full local Compose runtime
+check remains pending on the current verification computer because firmware
+virtualization and WSL 2 are not enabled. After enabling them, run
+`npm run docker:up`, wait for all three services to become healthy, verify both
+local URLs, restart the stack without `--volumes`, and confirm MongoDB data still
+exists. Do not use `docker compose down --volumes` unless intentionally deleting
+the local database.
+
 GitHub Actions runs Docker configuration validation, formatting, linting, type
 checking, all tests, and production builds for pull requests and pushes to
 `main`.
@@ -258,6 +288,10 @@ Render or Vercel.
 
 ### Deployment recovery
 
+Keep an approved secure backup of the provider configuration and secret values;
+the repository deliberately cannot recreate production credentials or Atlas
+data by itself.
+
 1. Restore or recreate the Atlas cluster and database user, then configure the
    minimum Render network access required.
 2. Recreate the Render service from `render.yaml` and restore its environment
@@ -271,6 +305,12 @@ Render or Vercel.
 5. Set Render's `CLIENT_URL` to the restored Vercel origin, redeploy the API,
    and verify health, CORS, staff sign-in, catalog access, and a test pickup
    order before reopening the shop.
+
+For a code-only incident, prefer reverting the faulty Git commit and letting CI
+redeploy it, or use the hosting provider's previous-deployment rollback. Do not
+delete or restore Atlas data for a code rollback. If a credential might be
+exposed, rotate the Atlas user password and `JWT_SECRET`, update Render, redeploy,
+and require staff to sign in again.
 
 Render's free service can sleep after inactivity, so the first API request may
 take longer. Atlas backups and point-in-time recovery depend on the selected
