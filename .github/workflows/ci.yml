@@ -75,6 +75,7 @@ jobs:
         run: |
           cp apps/api/.env.example apps/api/.env
           cp apps/web/.env.example apps/web/.env
+          sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" apps/api/.env
 
       - name: Build and start Docker Compose stack
         run: docker compose up --build --detach --wait --wait-timeout 300
