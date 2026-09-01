@@ -253,8 +253,8 @@ pushes to `main`.
 
 ### Live production
 
-- Frontend: <https://south-india-coffee-shop-web.vercel.app>
-- Admin sign-in: <https://south-india-coffee-shop-web.vercel.app/admin/login>
+- Frontend: <https://jrgsouthindiacoffeeshop.vercel.app>
+- Admin sign-in: <https://jrgsouthindiacoffeeshop.vercel.app/admin/login>
 - API: <https://south-india-coffee-shop-api.onrender.com>
 - Health check: <https://south-india-coffee-shop-api.onrender.com/api/health>
 
