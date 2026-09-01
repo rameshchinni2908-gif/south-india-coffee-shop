@@ -89,7 +89,7 @@ export const MenuPage = () => {
       <SiteHeader />
       <MenuHero />
 
-      <Box component="main" id="menu-results" sx={{ py: { xs: 5, md: 8 } }}>
+      <Box component="main" id="menu-results" tabIndex={-1} sx={{ py: { xs: 5, md: 8 } }}>
         <Container maxWidth="lg">
           <MenuFilters
             categories={categories}

@@ -176,8 +176,24 @@ npm run build
 
 `npm test` includes automated accessibility scans for the customer menu, staff
 sign-in, and admin dashboard. Run only those checks with `npm run test:a11y`.
-Color contrast, screen-reader behavior, keyboard navigation, and mobile zoom
-still require a real-browser/manual accessibility review before production.
+Screen-reader behavior and mobile zoom still require a manual assistive-
+technology review before production.
+
+### Browser verification
+
+The deployed application was manually checked in Chrome on 1 September 2026 at
+desktop size and a 390 x 844 mobile viewport. The check covered Render cold-start
+recovery, menu search and category filters, cart state, checkout and order-
+tracking validation, SPA route refreshes, protected admin routing, and read-only
+dashboard, order, product, and staff screens. No application-origin console
+errors or horizontal mobile overflow were observed, and no production records
+were created or modified. Keyboard testing also confirmed a visible skip link;
+its target is programmatically focusable and covered by an automated regression
+test.
+
+Edge, Firefox, real mobile Safari/Chrome, screen readers, and browser zoom must
+still be checked on their native platforms before calling cross-browser QA
+complete.
 
 GitHub Actions runs Docker configuration validation, formatting, linting, type
 checking, all tests, and production builds for pull requests and pushes to

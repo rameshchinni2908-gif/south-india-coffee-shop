@@ -113,6 +113,15 @@ describe("customer menu", () => {
     expect(screen.getByText("1 item")).toBeInTheDocument();
   });
 
+  it("makes the menu results focusable for the skip link", async () => {
+    installSuccessfulFetch();
+    renderMenu();
+
+    await screen.findByRole("heading", { name: "Filter Coffee" });
+    expect(screen.getByRole("main")).toHaveAttribute("id", "menu-results");
+    expect(screen.getByRole("main")).toHaveAttribute("tabindex", "-1");
+  });
+
   it("adds an available product variant to the cart", async () => {
     installSuccessfulFetch();
     const user = userEvent.setup();
