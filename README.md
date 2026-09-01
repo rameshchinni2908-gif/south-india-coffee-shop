@@ -281,8 +281,10 @@ seed after the first successful deployment.
 1. Import the same repository into Vercel.
 2. Set the project root directory to `apps/web`; `vercel.json` contains the
    Vite and SPA rewrite configuration.
-3. Set `VITE_API_BASE_URL` to the public HTTPS Render URL and set
-   `VITE_SHOP_NAME`.
+3. Set `VITE_API_BASE_URL` to the public HTTPS Render URL as the development
+   fallback and set `VITE_SHOP_NAME`. Secure production builds call the Vercel
+   origin, whose `/api/*` rewrite proxies to Render so staff authentication uses
+   a first-party HTTP-only cookie on Safari and other privacy-focused browsers.
 4. Deploy, then update Render's `CLIENT_URL` to the final Vercel URL and
    redeploy the API so cookie-based staff access and CORS use the production
    frontend origin.
@@ -305,7 +307,7 @@ data by itself.
    `SEED_ADMIN_*` variables, run `npm run seed` once, verify the catalog and
    sign-in, and remove those variables from Render.
 4. Reimport `apps/web` into Vercel, restore `VITE_API_BASE_URL` and
-   `VITE_SHOP_NAME`, and deploy.
+   `VITE_SHOP_NAME`, and deploy with the external `/api/*` rewrite intact.
 5. Set Render's `CLIENT_URL` to the restored Vercel origin, redeploy the API,
    and verify health, CORS, staff sign-in, catalog access, and a test pickup
    order before reopening the shop.
