@@ -30,6 +30,16 @@ services:
         value: Asia/Kolkata
       - key: TAX_PERCENTAGE
         value: 0
+      # Kaapi Karts mini-game. Flip GAME_ENABLED in the Render dashboard to
+      # release it; the socket server only starts when it is true.
+      - key: GAME_ENABLED
+        sync: false
+      - key: GAME_ROOM_TTL_MINUTES
+        value: 60
+      - key: GAME_RESULT_TTL_HOURS
+        value: 24
+      - key: GAME_MAX_ROOMS_PER_IP_PER_HOUR
+        value: 10
       - key: SEED_ADMIN_NAME
         sync: false
       - key: SEED_ADMIN_EMAIL

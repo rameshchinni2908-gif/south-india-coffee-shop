@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { SiteHeader } from "../../components/SiteHeader.js";
+import { environment } from "../../config/environment.js";
 import { pingGameHealth } from "./game-api.js";
 import { GAME_DISPLAY_NAME, GAME_TAGLINE, MAX_PLAYERS, MIN_PLAYERS } from "./game-contract.js";
 import { KAAPI_KARTS_PATH } from "./game-paths.js";
@@ -65,6 +66,13 @@ export const GamesHubPage = () => {
           </Box>
 
           <Box aria-live="polite" sx={{ mt: 3, maxWidth: 660 }}>
+            {environment.gameSocketMisconfigured ? (
+              <Alert severity="error">
+                Live racing is misconfigured on this deployment: set{" "}
+                <strong>VITE_GAME_SOCKET_URL</strong> to the API origin and redeploy. Until then the
+                lobby will never connect.
+              </Alert>
+            ) : null}
             {healthQuery.isPending && wakeTimedOut ? (
               <Alert severity="info" icon={<CircularProgress size={18} />}>
                 Waking the track… the game server sleeps when nobody is racing.
