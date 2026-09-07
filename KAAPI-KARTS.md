@@ -407,9 +407,19 @@ CI additions:
 
 ## 12. Phase 2 (documented, not built in V1)
 
-- Live kart-to-kart collisions with a lightweight authoritative-ish tick
-  (server runs the sim at 20 Hz, clients predict + reconcile). Needs a real
-  netcode pass and probably a paid Render instance.
+- ~~Live kart-to-kart collisions.~~ **Shipped (2026-09-07), in a cheaper form
+  than this section assumed.** No shared physics tick was needed. The server
+  already receives every kart's position at 15 Hz for ranking, so it also
+  resolves _contact_: when two karts overlap it decides which one was the
+  aggressor (whichever is aiming more squarely at the other, above a threshold
+  so a side-by-side brush does not count) and broadcasts one `race:contact`
+  verdict that both phones obey — the rammer gets a speed reward, the victim a
+  gentler penalty. Karts still do not physically deflect each other; that would
+  need the full authoritative tick described here. See `RAM` in the contract and
+  `apps/api/src/modules/game/contacts.ts`.
+  **This had to be server-side:** each phone simulates only its own kart and
+  draws rivals from interpolated ghosts, so both sides of a collision would
+  independently conclude they were the rammer and both would take the reward.
 - Spectator mode for late joiners.
 - 2–3 more tracks + a track vote in the lobby.
 - "🎲 Spin instead" random-payer and "closest to a target time" modes.

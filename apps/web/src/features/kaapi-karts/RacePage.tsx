@@ -73,6 +73,7 @@ export const RacePage = () => {
   const knownGhostsRef = useRef<Set<number>>(new Set());
   const lapAnnouncedRef = useRef(0);
   const boostReadyRef = useRef(false);
+  const selfCarNumberRef = useRef<number | null>(null);
   const sendPositionRef = useRef(socket.sendPosition);
   const sendFinishRef = useRef(socket.sendFinish);
 
@@ -85,6 +86,10 @@ export const RacePage = () => {
 
   const [hud, setHud] = useState<HudSnapshot>(INITIAL_HUD);
   const [announcement, setAnnouncement] = useState("");
+  const [contactFlash, setContactFlash] = useState<{
+    kind: "dealt" | "taken";
+    carNumber: number;
+  } | null>(null);
   const [countdownDone, setCountdownDone] = useState(false);
   const [hasFinished, setHasFinished] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -107,6 +112,21 @@ export const RacePage = () => {
   useEffect(() => {
     startRef.current = localStartMs;
   }, [localStartMs]);
+
+  useEffect(() => {
+    selfCarNumberRef.current = self?.carNumber ?? null;
+  }, [self]);
+
+  // Clear the ram banner a moment after it appears.
+  useEffect(() => {
+    if (!contactFlash) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setContactFlash(null), 1400);
+
+    return () => window.clearTimeout(timer);
+  }, [contactFlash]);
 
   useEffect(() => {
     colourByCarRef.current = new Map(
@@ -215,6 +235,33 @@ export const RacePage = () => {
 
     return unsubscribe;
   }, [socket.subscribeToGhosts]);
+
+  // Ram verdicts come from the server, never from local collision detection:
+  // both phones in a collision would otherwise each decide they did the hitting.
+  useEffect(() => {
+    const unsubscribe = socket.subscribeToContacts((contact) => {
+      const engine = engineRef.current;
+      const myCar = selfCarNumberRef.current;
+
+      if (!engine || myCar === null) {
+        return;
+      }
+
+      if (contact.dasherCarNumber === myCar) {
+        engine.applyContact(true);
+        setContactFlash({ kind: "dealt", carNumber: contact.victimCarNumber });
+        setAnnouncement(`You knocked car ${formatCarNumber(contact.victimCarNumber)} wide.`);
+        pulse(30);
+      } else if (contact.victimCarNumber === myCar) {
+        engine.applyContact(false);
+        setContactFlash({ kind: "taken", carNumber: contact.dasherCarNumber });
+        setAnnouncement(`Car ${formatCarNumber(contact.dasherCarNumber)} knocked you wide.`);
+        pulse([40, 40, 40]);
+      }
+    });
+
+    return unsubscribe;
+  }, [socket.subscribeToContacts]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -392,6 +439,45 @@ export const RacePage = () => {
           standings={standings}
           offline={socket.connection !== "connected" && socket.connection !== "idle"}
         />
+      ) : null}
+
+      {contactFlash ? (
+        <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            top: "38%",
+            left: 0,
+            right: 0,
+            display: "grid",
+            placeItems: "center",
+            pointerEvents: "none",
+            zIndex: 4,
+          }}
+        >
+          <Box
+            sx={{
+              px: 2.5,
+              py: 1.25,
+              borderRadius: 999,
+              fontWeight: 900,
+              fontSize: { xs: 18, sm: 22 },
+              letterSpacing: "-0.02em",
+              color: "#fffdf8",
+              bgcolor: contactFlash.kind === "dealt" ? "#28734f" : "#8a2f2f",
+              boxShadow: "0 10px 30px rgba(45, 27, 19, 0.35)",
+              animation: reducedMotion ? "none" : "kaapiRamPop 220ms ease-out",
+              "@keyframes kaapiRamPop": {
+                from: { transform: "scale(0.82)", opacity: 0 },
+                to: { transform: "scale(1)", opacity: 1 },
+              },
+            }}
+          >
+            {contactFlash.kind === "dealt"
+              ? `Knocked ${formatCarNumber(contactFlash.carNumber)} wide! +Speed`
+              : `Car ${formatCarNumber(contactFlash.carNumber)} hit you!`}
+          </Box>
+        </Box>
       ) : null}
 
       <RaceControls

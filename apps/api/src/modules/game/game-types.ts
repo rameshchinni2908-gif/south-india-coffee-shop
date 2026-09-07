@@ -31,6 +31,15 @@ export interface RoomPlayer {
   /** Fractional laps travelled, from the last accepted position broadcast. */
   progress: number;
   lapsCompleted: number;
+  /**
+   * Last reported pose. Untrusted and render-only for the clients, but the
+   * server needs it to resolve ramming: only it sees every kart at once, so
+   * only it can decide which of two colliding phones was the aggressor.
+   * Null until the first position broadcast of the race.
+   */
+  lastX: number | null;
+  lastY: number | null;
+  lastHeading: number;
   /** The submitted time was implausible and was clamped to the cap. */
   suspect: boolean;
   /** Order of arrival at the flag, 1-based; null until the player finishes. */
@@ -58,6 +67,11 @@ export interface RoomRecord {
   lastActivityAt: Date;
   expiresAt: Date;
   timers: RoomTimers;
+  /**
+   * Epoch millis of the last resolved contact per car pair, keyed low-high
+   * ("3:11"). Stops a single scrape emitting a burst of hits at 15 Hz.
+   */
+  contactCooldowns: Map<string, number>;
 }
 
 export interface NewGameResultRecord {

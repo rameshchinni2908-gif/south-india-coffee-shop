@@ -148,38 +148,41 @@ export interface TrackDefinition {
 export const KAAPI_CIRCUIT: TrackDefinition = {
   id: "kaapi-circuit",
   name: "Kaapi Circuit",
-  width: 1000,
-  height: 1450,
-  halfWidth: 56,
+  // Scaled up 1.35x from the original layout so a lap is a proper runway rather
+  // than a quick loop. Speed rose further still (see KART), so the circuit both
+  // takes longer to learn and feels faster to drive.
+  width: 1350,
+  height: 1958,
+  halfWidth: 76,
   controlPoints: [
-    { x: 500, y: 150 },
-    { x: 770, y: 205 },
-    { x: 858, y: 400 },
-    { x: 775, y: 560 },
-    { x: 560, y: 620 },
-    { x: 415, y: 700 },
-    { x: 520, y: 830 },
-    { x: 800, y: 900 },
-    { x: 862, y: 1120 },
-    { x: 700, y: 1300 },
-    { x: 420, y: 1332 },
-    { x: 198, y: 1200 },
-    { x: 150, y: 950 },
-    { x: 282, y: 800 },
-    { x: 238, y: 600 },
-    { x: 152, y: 400 },
-    { x: 232, y: 202 },
+    { x: 675, y: 203 },
+    { x: 1040, y: 277 },
+    { x: 1158, y: 540 },
+    { x: 1046, y: 756 },
+    { x: 756, y: 837 },
+    { x: 560, y: 945 },
+    { x: 702, y: 1121 },
+    { x: 1080, y: 1215 },
+    { x: 1164, y: 1512 },
+    { x: 945, y: 1755 },
+    { x: 567, y: 1798 },
+    { x: 267, y: 1620 },
+    { x: 203, y: 1283 },
+    { x: 381, y: 1080 },
+    { x: 321, y: 810 },
+    { x: 205, y: 540 },
+    { x: 313, y: 273 },
   ],
   boostPads: [
-    { x: 858, y: 400 },
-    { x: 470, y: 762 },
-    { x: 862, y: 1120 },
-    { x: 198, y: 1200 },
-    { x: 152, y: 400 },
+    { x: 1158, y: 540 },
+    { x: 635, y: 1029 },
+    { x: 1164, y: 1512 },
+    { x: 267, y: 1620 },
+    { x: 205, y: 540 },
   ],
   startIndex: 0,
   startHeading: 0,
-  approximateLapLength: 3969,
+  approximateLapLength: 5358,
 };
 
 export const TRACKS: readonly TrackDefinition[] = [KAAPI_CIRCUIT];
@@ -193,25 +196,60 @@ export const findTrack = (id: string): TrackDefinition | undefined =>
 // ---------------------------------------------------------------------------
 
 export const KART = {
-  /** World units per second. */
-  maxSpeed: 132,
-  boostSpeed: 196,
+  /**
+   * World units per second. Raised alongside the longer circuit so the kart
+   * feels like it is being driven rather than steered: it now covers more
+   * ground per second than the track grew, which is what reads as speed.
+   */
+  maxSpeed: 190,
+  /** A pad is a real event, not a nudge: roughly 45% over cruising pace. */
+  boostSpeed: 275,
   /** Multiplier applied to maxSpeed once off the drivable surface. */
   offTrackSpeedFactor: 0.46,
-  acceleration: 108,
-  braking: 210,
+  acceleration: 150,
+  braking: 290,
   /** Passive drag when neither accelerating nor braking. */
-  drag: 62,
+  drag: 85,
   /** Radians per second at full lock, scaled down with speed. */
-  turnRate: 2.5,
+  turnRate: 2.6,
   /** Steering authority retained at top speed (0-1). */
   highSpeedTurnFactor: 0.55,
   /** How quickly the kart's heading pulls its velocity around. Higher = less drift. */
   grip: 6.2,
   boostDurationMs: 1600,
   boostCooldownMs: 3200,
-  /** Collision-free in V1; this radius is only used for drawing and pad pickup. */
-  radius: 18,
+  /** Used for drawing, pad pickup and the barrier inset. */
+  radius: 22,
+} as const;
+
+/**
+ * Ramming. Driving into a rival rewards the aggressor and briefly unsettles the
+ * victim, so the pack fights instead of filing round in a queue.
+ *
+ * Contact is resolved on the SERVER, never on the phones. Each phone simulates
+ * only its own kart and sees rivals as interpolated ghosts, so both sides of a
+ * collision would independently decide they were the one doing the ramming and
+ * both would award themselves the boost. The server sees every position, picks
+ * one aggressor, and tells both clients the same verdict.
+ */
+export const RAM = {
+  /** Centre-to-centre distance that counts as contact, in world units. */
+  contactRadius: 54,
+  /**
+   * How directly the aggressor must be pointing at the victim, as a dot product
+   * of its heading against the direction to the other kart. Keeps a harmless
+   * side-by-side brush from counting as a hit.
+   */
+  minAim: 0.34,
+  /** Per-pair quiet period, so one scrape cannot machine-gun events. */
+  cooldownMs: 1500,
+  boostMs: 1300,
+  /** Speed multiplier applied to the aggressor while the reward lasts. */
+  boostFactor: 1.28,
+  slowMs: 900,
+  /** Speed multiplier applied to the victim. Deliberately gentler than the
+   *  reward: being hit should sting, not end your race. */
+  slowFactor: 0.72,
 } as const;
 
 /** Mild catch-up so a runaway leader does not end the race early. */
@@ -276,6 +314,12 @@ export interface RaceResult {
   readonly payerCarNumber: number;
 }
 
+/** One resolved collision. The server decides who rammed whom; clients obey. */
+export interface ContactPayload {
+  readonly dasherCarNumber: number;
+  readonly victimCarNumber: number;
+}
+
 export interface GhostPayload {
   readonly carNumber: number;
   readonly x: number;
@@ -324,6 +368,7 @@ export interface ServerToClientEvents {
   "race:countdown": (payload: { raceStartsAt: string; serverTime: string }) => void;
   "race:go": (payload: { raceEndsAt: string; serverTime: string }) => void;
   "race:ghost": (payload: GhostPayload) => void;
+  "race:contact": (payload: ContactPayload) => void;
   "race:playerFinished": (payload: { carNumber: number; rank: number; finishMs: number }) => void;
   "race:results": (result: RaceResult) => void;
   "game:error": (payload: GameErrorPayload) => void;

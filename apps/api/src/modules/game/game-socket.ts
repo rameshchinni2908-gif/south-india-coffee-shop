@@ -264,6 +264,9 @@ export const createGameSocket = ({
     },
 
     listener: {
+      contact(code, payload) {
+        namespace?.to(code).emit("race:contact", payload);
+      },
       roomState(code, state) {
         namespace?.to(code).emit("room:state", state);
       },

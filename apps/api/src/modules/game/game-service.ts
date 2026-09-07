@@ -14,6 +14,7 @@ import {
   findTrack,
   type GamePlayer,
   type GameRoomState,
+  type ContactPayload,
   type GhostPayload,
   type RaceResult,
 } from "./game-contract.js";
@@ -25,6 +26,7 @@ import type {
   PositionPayload,
   SetCarPayload,
 } from "./game-schemas.js";
+import { pruneContactCooldowns, resolveContacts } from "./contacts.js";
 import { GameError, type RoomPlayer, type RoomRecord } from "./game-types.js";
 import { createPlayerId, type RoomStore } from "./room-store.js";
 import { buildRaceOutcome, clampProgress, validateFinish, type RankingEntry } from "./standings.js";
@@ -40,6 +42,7 @@ export interface GameServiceListener {
     payload: { carNumber: number; rank: number; finishMs: number },
   ): void;
   results(code: string, result: RaceResult): void;
+  contact(code: string, payload: ContactPayload): void;
 }
 
 export interface CreatedRoom {
@@ -84,6 +87,7 @@ const noopListener: GameServiceListener = {
   go: () => undefined,
   playerFinished: () => undefined,
   results: () => undefined,
+  contact: () => undefined,
 };
 
 const toGamePlayer = (player: RoomPlayer): GamePlayer => ({
@@ -137,6 +141,9 @@ const resetRaceState = (player: RoomPlayer): void => {
   player.lapsCompleted = 0;
   player.suspect = false;
   player.finishOrder = null;
+  player.lastX = null;
+  player.lastY = null;
+  player.lastHeading = 0;
 };
 
 export const createGameService = ({
@@ -328,6 +335,9 @@ export const createGameService = ({
         finishMs: null,
         progress: 0,
         lapsCompleted: 0,
+        lastX: null,
+        lastY: null,
+        lastHeading: 0,
         suspect: false,
         finishOrder: null,
       };
@@ -342,6 +352,7 @@ export const createGameService = ({
         lastActivityAt: createdAt,
         expiresAt: createdAt,
         timers: { countdown: null, cap: null },
+        contactCooldowns: new Map<string, number>(),
       };
 
       roomStore.set(room);
@@ -384,6 +395,9 @@ export const createGameService = ({
         finishMs: null,
         progress: 0,
         lapsCompleted: 0,
+        lastX: null,
+        lastY: null,
+        lastHeading: 0,
         suspect: false,
         finishOrder: null,
       };
@@ -588,7 +602,21 @@ export const createGameService = ({
       // player who never crosses the line.
       player.progress = clampProgress(input.progress);
       player.lapsCompleted = Math.min(TOTAL_LAPS, Math.floor(player.progress));
+      player.lastX = input.x;
+      player.lastY = input.y;
+      player.lastHeading = input.heading;
       room.lastActivityAt = now();
+
+      const nowMs = room.lastActivityAt.getTime();
+      const contacts = resolveContacts(player, room.players, room.contactCooldowns, nowMs);
+
+      if (room.contactCooldowns.size > 0) {
+        pruneContactCooldowns(room.contactCooldowns, nowMs);
+      }
+
+      for (const contact of contacts) {
+        listener.contact(code, contact);
+      }
 
       return {
         carNumber: player.carNumber,

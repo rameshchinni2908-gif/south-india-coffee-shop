@@ -20,6 +20,7 @@
 import {
   POSITION_BROADCAST_INTERVAL_MS,
   RACE_CAP_MS,
+  RAM,
   TOTAL_LAPS,
   type TrackDefinition,
 } from "../game-contract.js";
@@ -105,6 +106,8 @@ export interface RaceEngine {
   removeGhost(carNumber: number): void;
   getSnapshot(): SelfSnapshot;
   /** Force-end (race cap hit). Fires onFinish only if not already finished. */
+  /** Applies the server's ram verdict: reward if we were the aggressor. */
+  applyContact(isDasher: boolean): void;
   forceFinish(): void;
   destroy(): void;
 }
@@ -131,8 +134,8 @@ const QUALITY_SAMPLE_MS = 1000;
  * Widened after playtesting: the first pass framed the kart too tightly to read
  * where the next corner went.
  */
-const VIEW_WIDTH = 560;
-const VIEW_HEIGHT = 810;
+const VIEW_WIDTH = 700;
+const VIEW_HEIGHT = 1010;
 /** Push the camera ahead of the kart, as a share of the visible height. */
 const CAMERA_LOOK_AHEAD = 0.16;
 const CAMERA_FOLLOW_RATE = 9;
@@ -623,6 +626,13 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
     },
 
     forceFinish,
+    applyContact(isDasher) {
+      if (isDasher) {
+        self.ramBoostMsRemaining = RAM.boostMs;
+      } else {
+        self.ramSlowMsRemaining = RAM.slowMs;
+      }
+    },
 
     destroy(): void {
       if (destroyed) return;

@@ -87,10 +87,10 @@ describe("track geometry", () => {
   it("measures a lap length close to the contract's approximateLapLength", () => {
     const contractLength = KAAPI_CIRCUIT.approximateLapLength;
     const drift = Math.abs(geometry.length - contractLength) / contractLength;
-    // Measured: ~3968.8 world units against the contract's 3820 (~3.9% long).
-    expect(drift).toBeLessThan(0.1);
-    expect(geometry.length).toBeGreaterThan(3_900);
-    expect(geometry.length).toBeLessThan(4_050);
+    // Measured 5358.18 world units against the contract's 5358.
+    expect(drift).toBeLessThan(0.02);
+    expect(geometry.length).toBeGreaterThan(5_250);
+    expect(geometry.length).toBeLessThan(5_500);
   });
 
   it("reports ~zero lateral offset for points on the centreline", () => {
@@ -107,11 +107,11 @@ describe("track geometry", () => {
 
   it("reports an off-surface lateral offset for points well outside the ribbon", () => {
     const sample = createTrackSample();
-    // 90 units below the top straight, and the empty top-right corner.
+    // Well inside the infield, and the empty outer corners of the bigger world.
     const outside: ReadonlyArray<readonly [number, number]> = [
-      [500, 240],
-      [960, 40],
-      [40, 1440],
+      [675, 1000],
+      [1320, 40],
+      [40, 1930],
     ];
     for (const point of outside) {
       closestPointOnTrack(geometry, point[0], point[1], sample);

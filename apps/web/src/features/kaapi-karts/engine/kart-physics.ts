@@ -15,7 +15,7 @@
  * - a rubber-band multiplier scales the speed target
  */
 
-import { KART, RUBBER_BAND, type BoostPad, type TrackDefinition } from "../game-contract.js";
+import { KART, RAM, RUBBER_BAND, type BoostPad, type TrackDefinition } from "../game-contract.js";
 import { angleLerp, approachFactor, clamp } from "./math.js";
 import {
   closestPointOnTrack,
@@ -56,6 +56,10 @@ export interface KartState {
   boostMsRemaining: number;
   /** Time until another pad can be picked up. Includes the boost itself. */
   boostCooldownMsRemaining: number;
+  /** Reward for ramming a rival; set by the server verdict, not locally. */
+  ramBoostMsRemaining: number;
+  /** Penalty for being rammed. */
+  ramSlowMsRemaining: number;
 }
 
 export interface KartInput {
@@ -102,6 +106,8 @@ export const createKartState = (
   onTrack: true,
   boostMsRemaining: 0,
   boostCooldownMsRemaining: 0,
+  ramBoostMsRemaining: 0,
+  ramSlowMsRemaining: 0,
 });
 
 export const copyKartState = (source: KartState, target: KartState): KartState => {
@@ -115,6 +121,8 @@ export const copyKartState = (source: KartState, target: KartState): KartState =
   target.onTrack = source.onTrack;
   target.boostMsRemaining = source.boostMsRemaining;
   target.boostCooldownMsRemaining = source.boostCooldownMsRemaining;
+  target.ramBoostMsRemaining = source.ramBoostMsRemaining;
+  target.ramSlowMsRemaining = source.ramSlowMsRemaining;
   return target;
 };
 
@@ -176,6 +184,8 @@ export const stepKart = (
   let y = state.y;
   let boostMsRemaining = Math.max(state.boostMsRemaining - dtMs, 0);
   let boostCooldownMsRemaining = Math.max(state.boostCooldownMsRemaining - dtMs, 0);
+  const ramBoostMsRemaining = Math.max(state.ramBoostMsRemaining - dtMs, 0);
+  const ramSlowMsRemaining = Math.max(state.ramSlowMsRemaining - dtMs, 0);
 
   // --- steering -----------------------------------------------------------
   heading += input.steer * steeringRateAt(speed) * dtSeconds;
@@ -183,7 +193,12 @@ export const stepKart = (
   // --- longitudinal -------------------------------------------------------
   const boosting = boostMsRemaining > 0;
   const rubberBand = context.rubberBand > 0 ? context.rubberBand : 1;
-  const target = (boosting ? KART.boostSpeed : KART.maxSpeed) * rubberBand;
+  // Ram reward and penalty stack on top of whatever the kart was already doing,
+  // so shunting a rival out of a pad boost is worth it. Both are set only from
+  // the server's verdict — see RAM in the contract for why.
+  const ramFactor =
+    (ramBoostMsRemaining > 0 ? RAM.boostFactor : 1) * (ramSlowMsRemaining > 0 ? RAM.slowFactor : 1);
+  const target = (boosting ? KART.boostSpeed : KART.maxSpeed) * rubberBand * ramFactor;
 
   if (input.braking) {
     speed = Math.max(speed - KART.braking * dtSeconds, 0);
@@ -253,5 +268,7 @@ export const stepKart = (
   result.onTrack = onTrack;
   result.boostMsRemaining = boostMsRemaining;
   result.boostCooldownMsRemaining = boostCooldownMsRemaining;
+  result.ramBoostMsRemaining = ramBoostMsRemaining;
+  result.ramSlowMsRemaining = ramSlowMsRemaining;
   return result;
 };

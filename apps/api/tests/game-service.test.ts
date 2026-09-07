@@ -461,6 +461,7 @@ describe("game service", () => {
       go: vi.fn(),
       playerFinished: vi.fn(),
       results: vi.fn(),
+      contact: vi.fn(),
     };
 
     gameService.setListener(listener);

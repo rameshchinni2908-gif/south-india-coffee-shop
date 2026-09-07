@@ -7,6 +7,7 @@ import {
   type ClientToServerEvents,
   type GameErrorPayload,
   type GameRoomState,
+  type ContactPayload,
   type GhostPayload,
   type RaceResult,
   type RoomStatus,
@@ -46,6 +47,8 @@ export interface GameSocketApi {
   /** Add this to a server timestamp to get the equivalent local clock time. */
   readonly serverClockOffsetMs: number;
   subscribeToGhosts(listener: (ghost: GhostPayload) => void): () => void;
+  /** Server-resolved ram verdicts for this room. */
+  subscribeToContacts(listener: (contact: ContactPayload) => void): () => void;
   clearError(): void;
   setReady(isReady: boolean): void;
   setCar(update: CarUpdate): void;
@@ -75,6 +78,7 @@ export const useGameSocket = ({
   const socketRef = useRef<GameClientSocket | null>(null);
   const ghostsRef = useRef<Map<number, GhostPayload>>(new Map());
   const ghostListenersRef = useRef<Set<(ghost: GhostPayload) => void>>(new Set());
+  const contactListenersRef = useRef<Set<(contact: ContactPayload) => void>>(new Set());
   const bestRoundTripRef = useRef(Number.POSITIVE_INFINITY);
 
   const [state, setState] = useState<GameRoomState | null>(null);
@@ -207,6 +211,12 @@ export const useGameSocket = ({
       }
     });
 
+    socket.on("race:contact", (contact) => {
+      for (const listener of contactListenersRef.current) {
+        listener(contact);
+      }
+    });
+
     socket.on("race:results", (result) => {
       setResults(result);
       setState((current) => (current ? { ...current, status: "RESULTS" } : current));
@@ -231,6 +241,15 @@ export const useGameSocket = ({
 
   const subscribeToGhosts = useCallback((listener: (ghost: GhostPayload) => void) => {
     const listeners = ghostListenersRef.current;
+    listeners.add(listener);
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+
+  const subscribeToContacts = useCallback((listener: (contact: ContactPayload) => void) => {
+    const listeners = contactListenersRef.current;
     listeners.add(listener);
 
     return () => {
@@ -303,6 +322,7 @@ export const useGameSocket = ({
     connection: isActive ? (connection === "idle" ? "connecting" : connection) : "idle",
     serverClockOffsetMs,
     subscribeToGhosts,
+    subscribeToContacts,
     clearError,
     setReady,
     setCar,

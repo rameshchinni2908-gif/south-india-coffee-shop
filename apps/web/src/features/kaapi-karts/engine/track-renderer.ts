@@ -38,7 +38,7 @@ const NO_DASH: number[] = [];
 const CHEQUER_DEPTH = 22;
 const CHEQUER_COLUMNS = 8;
 /** Widened after playtesting: the pads were easy to miss at speed. */
-const BOOST_PAD_RADIUS = 40;
+const BOOST_PAD_RADIUS = 52;
 
 export interface TrackRenderer {
   draw(ctx: CanvasRenderingContext2D, timeMs: number, reducedMotion: boolean): void;
