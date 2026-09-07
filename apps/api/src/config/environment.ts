@@ -41,6 +41,13 @@ const environmentSchema = z.object({
     }, "SHOP_TIMEZONE must be a valid IANA timezone")
     .default("Asia/Kolkata"),
   TAX_PERCENTAGE: z.coerce.number().min(0).max(100).default(0),
+  GAME_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  GAME_ROOM_TTL_MINUTES: z.coerce.number().int().min(5).max(720).default(60),
+  GAME_RESULT_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  GAME_MAX_ROOMS_PER_IP_PER_HOUR: z.coerce.number().int().min(1).max(1000).default(10),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

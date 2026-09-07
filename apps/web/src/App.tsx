@@ -4,7 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import { environment } from "./config/environment.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
+import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
 
@@ -68,6 +70,13 @@ const AdminStaffPage = lazy(async () => {
   return { default: module.AdminStaffPage };
 });
 
+// Lazy so neither the game screens nor the canvas engine reach the main chunk.
+const KaapiKartsRoutes = lazy(async () => {
+  const module = await import("./features/kaapi-karts/kaapi-karts-routes.js");
+
+  return { default: module.KaapiKartsRoutes };
+});
+
 const RouteLoading = () => (
   <Box
     role="status"
@@ -86,6 +95,9 @@ export const AppRoutes = () => (
         <Route path="/cart" element={<CartPage />} />
         <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
         <Route path="/track-order" element={<OrderTrackingPage />} />
+        {environment.gameEnabled ? (
+          <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
+        ) : null}
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route element={<AdminGate />}>
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />

@@ -1,13 +1,16 @@
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
 import { AppBar, Badge, Button, Chip, Container, IconButton, Toolbar } from "@mui/material";
 import { Link } from "react-router-dom";
 
+import { environment } from "../config/environment.js";
 import { useCart } from "../features/cart/use-cart.js";
 import { BrandLockup } from "./BrandLockup.js";
 
 export const SiteHeader = () => {
   const { itemCount } = useCart();
+  const showGames = environment.gameEnabled;
 
   return (
     <AppBar
@@ -38,6 +41,33 @@ export const SiteHeader = () => {
               display: { xs: "none", sm: "flex" },
             }}
           />
+          {showGames ? (
+            <Button
+              component={Link}
+              to="/games"
+              color="inherit"
+              startIcon={<SportsEsportsOutlinedIcon />}
+              sx={{ ml: 1.5, display: { xs: "none", md: "inline-flex" } }}
+            >
+              Games
+            </Button>
+          ) : null}
+          {showGames ? (
+            <IconButton
+              component={Link}
+              to="/games"
+              color="primary"
+              aria-label="Play a game while you wait"
+              sx={{
+                ml: { xs: "auto", sm: 1 },
+                width: 44,
+                height: 44,
+                display: { xs: "inline-flex", md: "none" },
+              }}
+            >
+              <SportsEsportsOutlinedIcon />
+            </IconButton>
+          ) : null}
           <Button
             component={Link}
             to="/track-order"
@@ -53,7 +83,7 @@ export const SiteHeader = () => {
             color="primary"
             aria-label="Track an order"
             sx={{
-              ml: { xs: "auto", sm: 1 },
+              ml: showGames ? 0.5 : { xs: "auto", sm: 1 },
               width: 44,
               height: 44,
               display: { xs: "inline-flex", md: "none" },

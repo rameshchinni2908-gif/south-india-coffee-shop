@@ -185,6 +185,64 @@ Prices are integer paise. Product deletion is a soft archive and is restricted
 to `ADMIN`; `STAFF` and `ADMIN` can manage stock and availability. Variant price
 updates record price history in the same MongoDB transaction.
 
+## Kaapi Karts (waiting-room mini-game)
+
+An optional kart race that a table of customers plays on their own phones while
+their order is prepared, to decide who buys the round. 2–6 players per room,
+three laps, capped at 2 minutes 30 seconds. It is entertainment only: it never
+reads or writes orders, payments, stock, or customer records, and the "who pays"
+result is an explicit suggestion, not an instruction.
+
+The full specification lives in [`KAAPI-KARTS.md`](KAAPI-KARTS.md).
+
+### Enabling it
+
+The feature ships **disabled**. Turn it on by setting both flags and redeploying:
+
+```text
+# apps/api (Render)
+GAME_ENABLED=true
+GAME_ROOM_TTL_MINUTES=60
+GAME_RESULT_TTL_HOURS=24
+GAME_MAX_ROOMS_PER_IP_PER_HOUR=10
+
+# apps/web (Vercel)
+VITE_GAME_ENABLED=true
+# Optional. Defaults to VITE_API_BASE_URL; must point at the Render origin.
+VITE_GAME_SOCKET_URL=
+```
+
+With `GAME_ENABLED=false` the `/api/game` router is never mounted and no socket
+server starts. With `VITE_GAME_ENABLED=false` the Games entry is hidden from the
+header and the game routes redirect to the menu.
+
+### Endpoints
+
+- `GET /api/game/health` — readiness probe, also used to wake a sleeping Render instance
+- `POST /api/game/rooms` — create a room (rate limited per IP)
+- `POST /api/game/rooms/:code/join` — join or reconnect
+- `GET /api/game/rooms/:code` — room snapshot
+- `GET /api/game/results/:code` — the room's last race result
+
+Live play runs over Socket.IO on the `/game` namespace.
+
+### Operational notes
+
+- **Rooms are in memory.** The API is a single Render instance and a room only
+  matters while its players hold live sockets, so rooms are process-local with a
+  TTL sweeper and are lost on restart or redeploy. This is expected. Only race
+  results persist, in the `gameresults` collection with a TTL index on
+  `expiresAt` (add that index and one on `roomCode` in Atlas).
+- **Render Free sleeps** after about 15 minutes idle, so the first player may
+  wait ~50 seconds for a cold start. The Games screen fires the health probe on
+  mount to begin waking the instance early.
+- **Sockets bypass the Vercel proxy.** The `/api/:path*` rewrite that keeps the
+  admin cookie first-party cannot carry a WebSocket upgrade, so the game client
+  connects straight to the Render origin. `CLIENT_URL` on the API must therefore
+  be the Vercel origin, or the socket handshake fails CORS.
+- Scaling the API beyond one instance requires moving the room store to Redis
+  first.
+
 ## Quality checks
 
 ```powershell
