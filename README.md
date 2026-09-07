@@ -216,6 +216,28 @@ With `GAME_ENABLED=false` the `/api/game` router is never mounted and no socket
 server starts. With `VITE_GAME_ENABLED=false` the Games entry is hidden from the
 header and the game routes redirect to the menu.
 
+Enable the API first, then the web app. If the web goes live while the API is
+still disabled, the lobby simply never connects.
+
+**Saving the `VITE_*` variables in Vercel is not enough on its own.** Vite
+compiles them into the JavaScript at build time, so the running site keeps
+whatever values its last build used. After changing either variable, trigger a
+fresh build — Deployments, then Redeploy on the newest deployment — and set them
+for the Production environment specifically, not only Preview. The `GAME_*`
+variables on Render are read at process start, so saving them there is enough;
+Render restarts on its own.
+
+Verify each side independently:
+
+```bash
+# Expect {"success":true,"data":{"enabled":true},...}; a 404 means GAME_ENABLED is off.
+curl https://south-india-coffee-shop-api.onrender.com/api/game/health
+```
+
+The web side is live once a controller icon appears in the site header. If the
+games hub shows "Live racing is misconfigured", `VITE_GAME_SOCKET_URL` was not
+present in the build that is currently serving.
+
 ### Endpoints
 
 - `GET /api/game/health` — readiness probe, also used to wake a sleeping Render instance
