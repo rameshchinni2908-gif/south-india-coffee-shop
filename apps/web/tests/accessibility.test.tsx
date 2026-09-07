@@ -2,10 +2,13 @@ import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import axe from "axe-core";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppRoutes } from "../src/App.js";
+import { STORAGE_SEEN_HOW_TO } from "../src/features/bean-blasters/arena-contract.js";
+import { BeanBlastersStartPage } from "../src/features/bean-blasters/BeanBlastersStartPage.js";
+import { CartProvider } from "../src/features/cart/CartProvider.js";
 import { theme } from "../src/theme.js";
 
 const category = {
@@ -202,5 +205,67 @@ describe("automated accessibility checks", () => {
 
     await screen.findByRole("heading", { name: "Staff User" });
     await expectNoAutomatedViolations(container);
+  });
+
+  /**
+   * The mini-game routes are flag-gated off in tests, so these render the screen
+   * directly rather than through AppRoutes. The battle canvas itself is out of
+   * scope: BEAN-BLASTERS.md section 11 documents that it is navigable and
+   * understandable rather than fully playable by keyboard or screen reader.
+   */
+  describe("Bean Blasters", () => {
+    const renderGameScreen = (initialEntry: string, path: string, element: React.ReactElement) => {
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, gcTime: 0 },
+          mutations: { retry: false },
+        },
+      });
+
+      return render(
+        <ThemeProvider theme={theme}>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={[initialEntry]}>
+              {/* SiteHeader reads the cart, so the provider is required. */}
+              <CartProvider>
+                <Routes>
+                  <Route path={path} element={element} />
+                </Routes>
+              </CartProvider>
+            </MemoryRouter>
+          </QueryClientProvider>
+        </ThemeProvider>,
+      );
+    };
+
+    beforeEach(() => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>().mockImplementation(() => Promise.resolve(apiResponse({}))),
+      );
+    });
+
+    it("finds no detectable violations on the how-to-play carousel", async () => {
+      window.localStorage.removeItem(STORAGE_SEEN_HOW_TO);
+      renderGameScreen("/games/bean-blasters", "/games/bean-blasters", <BeanBlastersStartPage />);
+
+      await screen.findByRole("dialog", { name: /Bean Blasters in three cards/i });
+
+      // The dialog is portalled outside the render container, so audit the
+      // whole document or it would be checked as an empty page.
+      await expectNoAutomatedViolations(document.body);
+    });
+
+    it("finds no detectable violations on the create-or-join screen", async () => {
+      window.localStorage.setItem(STORAGE_SEEN_HOW_TO, "true");
+      const { container } = renderGameScreen(
+        "/games/bean-blasters",
+        "/games/bean-blasters",
+        <BeanBlastersStartPage />,
+      );
+
+      await screen.findByRole("heading", { name: "Create a room" });
+      await expectNoAutomatedViolations(container);
+    });
   });
 });

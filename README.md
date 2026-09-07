@@ -203,7 +203,10 @@ phone; set that constant back to 2 to make the game strictly social.
 
 ### Enabling it
 
-The feature ships **disabled**. Turn it on by setting both flags and redeploying:
+The feature ships **disabled**. Turn it on by setting both flags and redeploying.
+These same flags also control [Bean Blasters](#bean-blasters-waiting-room-mini-game)
+— the two games share one switch on purpose, so adding a game never adds
+configuration:
 
 ```text
 # apps/api (Render)
@@ -270,6 +273,67 @@ Live play runs over Socket.IO on the `/game` namespace.
   be the Vercel origin, or the socket handshake fails CORS.
 - Scaling the API beyond one instance requires moving the room store to Redis
   first.
+
+## Bean Blasters (waiting-room mini-game)
+
+The second game in the same hub. A top-down arena brawl where 2–6 baristas fling
+roasted coffee beans at each other for **two minutes**: three hearts each, a
+six-bean clip you have to reload, beans slow enough that you must lead a moving
+target, crates that give real cover, and four power-up pads. Most splashes
+landed wins; fewest buys the coffee. Running out of hearts sends you off for a
+six-second refill break rather than out of the round, so nobody sits and
+watches. Like the kart game it is entertainment only and never touches orders,
+payments, stock or customer records.
+
+The full specification lives in [`BEAN-BLASTERS.md`](BEAN-BLASTERS.md), including
+the tuning table and a map of where the code lives. Section 3a records where it
+deliberately departs from Kaapi Karts and why.
+
+**Every hit is decided by the server.** Clients report only their own movement
+and a request to throw; the API simulates every bean at 30 Hz and broadcasts one
+verdict both phones obey. There is deliberately no "I hit someone" event a
+client could send.
+
+### Enabling it
+
+No new environment variables. It uses exactly the flags listed under Kaapi Karts
+above — `GAME_ENABLED` on Render and `VITE_GAME_ENABLED` on Vercel turn both
+games on together, and `GAME_ROOM_TTL_MINUTES`, `GAME_RESULT_TTL_HOURS`,
+`GAME_MAX_ROOMS_PER_IP_PER_HOUR` and `VITE_GAME_SOCKET_URL` apply to both.
+
+The trade-off is that the two games cannot be released independently. If they
+ever need separate switches, add `GAME_BLASTERS_ENABLED` /
+`VITE_GAME_BLASTERS_ENABLED` defaulting to the shared flag's value so existing
+deployments keep working untouched.
+
+```bash
+# Expect {"success":true,"data":{"enabled":true},...}; a 404 means GAME_ENABLED is off.
+curl https://south-india-coffee-shop-api.onrender.com/api/arena/health
+```
+
+### Endpoints
+
+- `GET /api/arena/health` — readiness probe, also used to wake a sleeping instance
+- `POST /api/arena/rooms` — create a room (rate limited per IP, on its own counter)
+- `POST /api/arena/rooms/:code/join` — join or reconnect
+- `GET /api/arena/rooms/:code` — room snapshot
+- `GET /api/arena/results/:code` — the room's last round result
+
+### Operational notes
+
+- **It runs its own Socket.IO server on its own path** (`/arena.io/`, namespace
+  `/arena`). Kaapi Karts already occupies the default `/socket.io/` path, and two
+  Socket.IO servers can share one HTTP server only when their paths differ. This
+  is what keeps the two games' realtime layers independent — neither knows the
+  other exists, and deleting either cannot break the other.
+- **Rooms are in memory**, same design and same reasoning as the kart game. Only
+  round results persist, in the `arenaresults` collection with a TTL index on
+  `expiresAt` — **add that index and one on `roomCode` in Atlas**, or results
+  never expire.
+- Sockets bypass the Vercel proxy for the same reason as the kart game.
+- The two features share no code. Duplicated constants between them (the
+  room-code alphabet, the colour palette) are deliberate, so either game can be
+  deleted by removing its own folders.
 
 ## Quality checks
 

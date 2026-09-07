@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * Enforces the Kaapi Karts bundle budget from KAAPI-KARTS.md section 3.7.
+ * Enforces the mini-game bundle budgets: KAAPI-KARTS.md section 3.7 and
+ * BEAN-BLASTERS.md section 3.9.
  *
- * Two things can regress silently:
+ * Two things can regress silently for either game:
  *   1. the lazy game chunks growing past the budget, and
- *   2. the game leaking into the main entry chunk, which would make every
- *      customer download a kart game to look at the menu.
+ *   2. a game leaking into the main entry chunk, which would make every
+ *      customer download it just to look at the menu.
+ *
+ * Each game is measured SEPARATELY against its own budget, so one game cannot
+ * spend the other's headroom.
  *
  * Run against a web build produced with VITE_GAME_ENABLED=true.
  */
@@ -17,38 +21,98 @@ import { join } from "node:path";
 const ASSETS_DIR = join(process.cwd(), "apps", "web", "dist", "assets");
 const BUDGET_BYTES = 150 * 1024;
 
-/** Chunk basenames that belong to the mini-game, matched before the hash. */
-const GAME_CHUNK_PREFIXES = [
-  "kaapi-karts-routes",
-  "GamesHubPage",
-  "KaapiKartsStartPage",
-  "LobbyPage",
-  "RacePage",
-  "ResultsPage",
-  "RaceHud",
-  "RaceControls",
-  "CountdownOverlay",
-  "HowToPlayDialog",
-  "RoomCodeShare",
-  "CarTile",
-  "GameStates",
-  "use-game-socket",
-  "game-contract",
-  "game-api",
-  "game-paths",
-  "game-preferences",
-  "player-identity",
-  "race-engine",
-  "qrcode",
-  // Vite currently folds game-contract in here; keep it counted wherever it lands.
-  "use-reduced-motion",
+/**
+ * One entry per game. `prefixes` are chunk basenames matched before the hash;
+ * `marker` is a string that only ever appears in that game's own code, and
+ * proves it never reached the eager entry chunk.
+ *
+ * Chunk basenames must be unique ACROSS games — Vite names a chunk after its
+ * entry module, so two features with a `LobbyPage.tsx` would be
+ * indistinguishable here. The guard below fails the build if that ever happens.
+ */
+const GAMES = [
+  {
+    name: "Kaapi Karts",
+    marker: "kaapi-circuit",
+    prefixes: [
+      "kaapi-karts-routes",
+      "GamesHubPage",
+      "KaapiKartsStartPage",
+      "LobbyPage",
+      "RacePage",
+      "ResultsPage",
+      "RaceHud",
+      "RaceControls",
+      "CountdownOverlay",
+      "HowToPlayDialog",
+      "RoomCodeShare",
+      "CarTile",
+      "GameStates",
+      "use-game-socket",
+      "game-contract",
+      "game-api",
+      "game-paths",
+      "game-preferences",
+      "player-identity",
+      "race-engine",
+      "qrcode",
+      // Vite currently folds game-contract in here; keep it counted wherever it lands.
+      "use-reduced-motion",
+    ],
+  },
+  {
+    name: "Bean Blasters",
+    marker: "roastery-floor",
+    prefixes: [
+      "bean-blasters-routes",
+      "BeanBlastersStartPage",
+      "BeanBlastersLobbyPage",
+      "BeanBlastersResultsPage",
+      "BattlePage",
+      "BattleHud",
+      "BattleControls",
+      "BattleCountdownOverlay",
+      "BeanBlastersHowToPlayDialog",
+      "BeanBlastersRoomCodeShare",
+      "BadgeTile",
+      "ArenaStates",
+      "use-arena-socket",
+      "arena-contract",
+      "arena-api",
+      "arena-paths",
+      "arena-preferences",
+      "arena-player-identity",
+      "battle-engine",
+      "bean-pool",
+      "arena-geometry",
+      "barista-physics",
+      "arena-renderer",
+      "barista-renderer",
+      "use-arena-reduced-motion",
+    ],
+  },
 ];
-
-/** Proves the track definition never reaches the eager entry chunk. */
-const GAME_ONLY_MARKER = "kaapi-circuit";
 
 const gzipSize = (path) => gzipSync(readFileSync(path), { level: 9 }).length;
 const formatKb = (bytes) => `${(bytes / 1024).toFixed(2)} kB`;
+
+let failed = false;
+
+// A basename claimed by two games would be silently miscounted, so refuse to run.
+for (let i = 0; i < GAMES.length; i += 1) {
+  for (let j = i + 1; j < GAMES.length; j += 1) {
+    const overlap = GAMES[i].prefixes.filter((prefix) => GAMES[j].prefixes.includes(prefix));
+
+    if (overlap.length > 0) {
+      console.error(
+        `"${GAMES[i].name}" and "${GAMES[j].name}" both claim chunk name(s): ${overlap.join(", ")}.\n` +
+          "Rename one game's module so every chunk basename is unique, or this check\n" +
+          "silently bills one game for the other's bytes.",
+      );
+      process.exit(1);
+    }
+  }
+}
 
 let files;
 
@@ -59,44 +123,47 @@ try {
   process.exit(1);
 }
 
-const gameChunks = files
-  .filter((file) => file.endsWith(".js"))
-  .filter((file) => GAME_CHUNK_PREFIXES.some((prefix) => file.startsWith(`${prefix}-`)))
-  .map((file) => ({ file, bytes: gzipSize(join(ASSETS_DIR, file)) }))
-  .sort((a, b) => b.bytes - a.bytes);
+const jsFiles = files.filter((file) => file.endsWith(".js"));
+const entryChunks = jsFiles.filter((file) => file.startsWith("index-"));
 
-if (gameChunks.length === 0) {
-  console.error(
-    "Found no Kaapi Karts chunks. Either the build ran without VITE_GAME_ENABLED=true,\n" +
-      "or the game stopped being code-split — both need a look.",
-  );
-  process.exit(1);
-}
+for (const game of GAMES) {
+  const chunks = jsFiles
+    .filter((file) => game.prefixes.some((prefix) => file.startsWith(`${prefix}-`)))
+    .map((file) => ({ file, bytes: gzipSize(join(ASSETS_DIR, file)) }))
+    .sort((a, b) => b.bytes - a.bytes);
 
-const total = gameChunks.reduce((sum, chunk) => sum + chunk.bytes, 0);
+  console.log(`\n${game.name}`);
 
-for (const chunk of gameChunks) {
-  console.log(`  ${chunk.file.padEnd(44)} ${formatKb(chunk.bytes).padStart(10)} gzip`);
-}
-
-console.log(`\nKaapi Karts lazy chunks: ${formatKb(total)} gzip of ${formatKb(BUDGET_BYTES)}`);
-
-let failed = false;
-
-if (total > BUDGET_BYTES) {
-  console.error(`\nBudget exceeded by ${formatKb(total - BUDGET_BYTES)}.`);
-  failed = true;
-}
-
-const entryChunks = files.filter((file) => file.startsWith("index-") && file.endsWith(".js"));
-
-for (const entry of entryChunks) {
-  if (readFileSync(join(ASSETS_DIR, entry), "utf8").includes(GAME_ONLY_MARKER)) {
+  if (chunks.length === 0) {
     console.error(
-      `\n${entry} contains "${GAME_ONLY_MARKER}": the game is no longer lazy and now ships\n` +
-        "to every visitor. Keep the /games routes behind a lazy import.",
+      `  Found no ${game.name} chunks. Either the build ran without VITE_GAME_ENABLED=true,\n` +
+        "  or the game stopped being code-split — both need a look.",
     );
     failed = true;
+    continue;
+  }
+
+  for (const chunk of chunks) {
+    console.log(`  ${chunk.file.padEnd(44)} ${formatKb(chunk.bytes).padStart(10)} gzip`);
+  }
+
+  const total = chunks.reduce((sum, chunk) => sum + chunk.bytes, 0);
+
+  console.log(`  lazy chunks: ${formatKb(total)} gzip of ${formatKb(BUDGET_BYTES)}`);
+
+  if (total > BUDGET_BYTES) {
+    console.error(`  Budget exceeded by ${formatKb(total - BUDGET_BYTES)}.`);
+    failed = true;
+  }
+
+  for (const entry of entryChunks) {
+    if (readFileSync(join(ASSETS_DIR, entry), "utf8").includes(game.marker)) {
+      console.error(
+        `  ${entry} contains "${game.marker}": ${game.name} is no longer lazy and now\n` +
+          "  ships to every visitor. Keep the game routes behind a lazy import.",
+      );
+      failed = true;
+    }
   }
 }
 
@@ -104,4 +171,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log("Bundle budget OK, and the game stayed out of the entry chunk.");
+console.log("\nBoth games are within budget and neither reached the entry chunk.");

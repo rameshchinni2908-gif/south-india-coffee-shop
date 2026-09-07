@@ -8,6 +8,11 @@ import { createApp } from "./app.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
 import {
+  createArenaModule,
+  MongooseArenaResultRepository,
+  type ArenaModule,
+} from "./modules/arena/index.js";
+import {
   createGameModule,
   MongooseGameResultRepository,
   type GameModule,
@@ -75,6 +80,17 @@ const startServer = async (): Promise<void> => {
         resultRepository: new MongooseGameResultRepository(),
       })
     : null;
+  // Both mini-games share one flag on purpose, so Render and Vercel need no new
+  // configuration to run either. See BEAN-BLASTERS.md section 14.
+  const arenaModule: ArenaModule | null = environment.GAME_ENABLED
+    ? createArenaModule({
+        clientUrl: environment.CLIENT_URL,
+        roomTtlMinutes: environment.GAME_ROOM_TTL_MINUTES,
+        resultTtlHours: environment.GAME_RESULT_TTL_HOURS,
+        maxRoomsPerIpPerHour: environment.GAME_MAX_ROOMS_PER_IP_PER_HOUR,
+        resultRepository: new MongooseArenaResultRepository(),
+      })
+    : null;
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -84,6 +100,7 @@ const startServer = async (): Promise<void> => {
     reportService,
     staffAccountService,
     ...(gameModule ? { gameRouter: gameModule.router } : {}),
+    ...(arenaModule ? { arenaRouter: arenaModule.router } : {}),
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");
@@ -92,6 +109,13 @@ const startServer = async (): Promise<void> => {
   if (gameModule) {
     gameModule.attachSocket(server);
     logger.info("Kaapi Karts game module enabled");
+  }
+
+  // Its own Socket.IO server on its own path, so neither game's realtime layer
+  // has to know the other exists. See BEAN-BLASTERS.md section 8.
+  if (arenaModule) {
+    arenaModule.attachSocket(server);
+    logger.info("Bean Blasters game module enabled");
   }
 
   let isShuttingDown = false;
@@ -107,6 +131,10 @@ const startServer = async (): Promise<void> => {
     try {
       if (gameModule) {
         await gameModule.shutdown();
+      }
+
+      if (arenaModule) {
+        await arenaModule.shutdown();
       }
 
       await closeServer(server);

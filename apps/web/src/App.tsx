@@ -8,6 +8,7 @@ import { environment } from "./config/environment.js";
 import { PageLoading } from "./components/PageLoading.js";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
+import { BEAN_BLASTERS_PATH } from "./features/bean-blasters/arena-paths.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
@@ -79,6 +80,13 @@ const KaapiKartsRoutes = lazy(async () => {
   return { default: module.KaapiKartsRoutes };
 });
 
+// The second mini-game, lazy for the same reason and behind the same flag.
+const BeanBlastersRoutes = lazy(async () => {
+  const module = await import("./features/bean-blasters/bean-blasters-routes.js");
+
+  return { default: module.BeanBlastersRoutes };
+});
+
 export const AppRoutes = () => (
   <CartProvider>
     <RouteErrorBoundary>
@@ -89,7 +97,12 @@ export const AppRoutes = () => (
           <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
           <Route path="/track-order" element={<OrderTrackingPage />} />
           {environment.gameEnabled ? (
-            <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
+            <>
+              {/* More specific than the `/games/*` splat below, so it wins the
+                  match regardless of the order these are declared in. */}
+              <Route path={`${BEAN_BLASTERS_PATH}/*`} element={<BeanBlastersRoutes />} />
+              <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
+            </>
           ) : null}
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route element={<AdminGate />}>
