@@ -1,5 +1,5 @@
 import cors from "cors";
-import express, { type Express } from "express";
+import express, { type Express, type Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
@@ -37,6 +37,7 @@ interface CreateAppOptions {
   orderService?: OrderService;
   reportService?: ReportService;
   staffAccountService?: StaffAccountService;
+  gameRouter?: Router;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -49,6 +50,7 @@ export const createApp = ({
   orderService,
   reportService,
   staffAccountService,
+  gameRouter,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -111,6 +113,11 @@ export const createApp = ({
 
   if (reportService) {
     app.use("/api/admin/reports", createAdminReportRouter(authService, reportService));
+  }
+
+  // Mounted only when GAME_ENABLED, so the Kaapi Karts module can ship dark.
+  if (gameRouter) {
+    app.use("/api/game", gameRouter);
   }
 
   app.use(notFoundHandler);

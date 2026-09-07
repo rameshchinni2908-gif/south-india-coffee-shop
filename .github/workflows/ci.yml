@@ -62,6 +62,22 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The mini-game ships behind a flag, so the default build above never
+      # compiles it. Build it once with the flag on and hold it to its budget.
+      - name: Build with the Kaapi Karts mini-game enabled
+        env:
+          VITE_GAME_ENABLED: "true"
+        run: npm run build --workspace @south-india-coffee-shop/web
+
+      - name: Check the Kaapi Karts bundle budget
+        run: node scripts/check-game-bundle.mjs
+
+      - name: Test with the Kaapi Karts mini-game enabled
+        env:
+          GAME_ENABLED: "true"
+          VITE_GAME_ENABLED: "true"
+        run: npm test
+
   docker-runtime:
     name: Docker runtime and persistence
     runs-on: ubuntu-latest

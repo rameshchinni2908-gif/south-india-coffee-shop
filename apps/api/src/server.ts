@@ -7,6 +7,11 @@ import pino from "pino";
 import { createApp } from "./app.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
+import {
+  createGameModule,
+  MongooseGameResultRepository,
+  type GameModule,
+} from "./modules/game/index.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
 import { MongooseOrderRepository } from "./repositories/order-repository.js";
 import { MongooseProductRepository } from "./repositories/product-repository.js";
@@ -61,6 +66,15 @@ const startServer = async (): Promise<void> => {
     timezone: environment.SHOP_TIMEZONE,
   });
   const staffAccountService = createStaffAccountService(userRepository);
+  const gameModule: GameModule | null = environment.GAME_ENABLED
+    ? createGameModule({
+        clientUrl: environment.CLIENT_URL,
+        roomTtlMinutes: environment.GAME_ROOM_TTL_MINUTES,
+        resultTtlHours: environment.GAME_RESULT_TTL_HOURS,
+        maxRoomsPerIpPerHour: environment.GAME_MAX_ROOMS_PER_IP_PER_HOUR,
+        resultRepository: new MongooseGameResultRepository(),
+      })
+    : null;
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -69,10 +83,16 @@ const startServer = async (): Promise<void> => {
     orderService,
     reportService,
     staffAccountService,
+    ...(gameModule ? { gameRouter: gameModule.router } : {}),
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");
   });
+
+  if (gameModule) {
+    gameModule.attachSocket(server);
+    logger.info("Kaapi Karts game module enabled");
+  }
 
   let isShuttingDown = false;
 
@@ -85,6 +105,10 @@ const startServer = async (): Promise<void> => {
     logger.info({ signal }, "Shutting down API server");
 
     try {
+      if (gameModule) {
+        await gameModule.shutdown();
+      }
+
       await closeServer(server);
       await disconnectDatabase();
       logger.info("API server stopped");

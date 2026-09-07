@@ -62,4 +62,35 @@ describe("loadEnvironment", () => {
       }),
     ).toThrow(/SHOP_TIMEZONE/);
   });
+
+  it("keeps the Kaapi Karts game disabled unless it is explicitly enabled", () => {
+    const environment = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+    });
+
+    expect(environment).toMatchObject({
+      GAME_ENABLED: false,
+      GAME_ROOM_TTL_MINUTES: 60,
+      GAME_RESULT_TTL_HOURS: 24,
+      GAME_MAX_ROOMS_PER_IP_PER_HOUR: 10,
+    });
+  });
+
+  it("enables the game only for the exact string true", () => {
+    const enabled = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+      GAME_ENABLED: "true",
+    });
+
+    expect(enabled.GAME_ENABLED).toBe(true);
+    expect(() =>
+      loadEnvironment({
+        MONGODB_URI: "mongodb://localhost:27017/test",
+        JWT_SECRET: VALID_JWT_SECRET,
+        GAME_ENABLED: "yes",
+      }),
+    ).toThrow(/GAME_ENABLED/);
+  });
 });

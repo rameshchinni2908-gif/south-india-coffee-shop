@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import vercelConfiguration from "../vercel.json";
-import { resolveApiBaseUrl } from "../src/config/environment.js";
+import { resolveApiBaseUrl, resolveGameSocketUrl } from "../src/config/environment.js";
 
 describe("deployed API routing", () => {
   it("uses the frontend origin for secure production deployments", () => {
@@ -33,5 +33,27 @@ describe("deployed API routing", () => {
       source: "/(.*)",
       destination: "/index.html",
     });
+  });
+});
+
+describe("game socket routing", () => {
+  // A Vercel rewrite cannot carry a WebSocket upgrade, so the game socket has to
+  // reach Render directly rather than reusing the proxied browser origin.
+  it("falls back to the configured API origin, not the browser origin", () => {
+    expect(
+      resolveGameSocketUrl({
+        configuredSocketUrl: "",
+        configuredApiBaseUrl: "https://south-india-coffee-shop-api.onrender.com/",
+      }),
+    ).toBe("https://south-india-coffee-shop-api.onrender.com");
+  });
+
+  it("prefers an explicit socket URL when one is configured", () => {
+    expect(
+      resolveGameSocketUrl({
+        configuredSocketUrl: "https://games.example.com/",
+        configuredApiBaseUrl: "https://south-india-coffee-shop-api.onrender.com",
+      }),
+    ).toBe("https://games.example.com");
   });
 });
