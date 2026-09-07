@@ -433,6 +433,12 @@ Hosted deployments must use MongoDB Atlas, not the local Docker database.
 ## 16. Instructions for Codex and Other Coding Agents
 
 - Read this file and the nearest nested `AGENTS.md` before editing.
+- **Working on the Kaapi Karts mini-game?** Read `KAAPI-KARTS.md` as well. It is
+  the companion spec for everything under `apps/web/src/features/kaapi-karts/`
+  and `apps/api/src/modules/game/`, and it carries rules this file does not:
+  the feature flags, the in-memory room store, the server-resolved ram verdict,
+  the bundle budget, and the two mirrored `game-contract.ts` copies that must
+  never diverge. Everything in this file still applies on top.
 - Inspect existing code and tests before proposing architecture changes.
 - Make the smallest coherent change that completes the requested behavior.
 - Do not add dependencies when the existing stack can reasonably solve the task.

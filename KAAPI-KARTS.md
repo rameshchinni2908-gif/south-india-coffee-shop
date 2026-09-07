@@ -30,12 +30,17 @@ non-binding suggestion shown with a disclaimer.
 
 - A **Games** hub route and a **Kaapi Karts** sub-menu entry in site navigation.
 - **Create room** → 4-character room code + shareable link + QR code.
-- **Join room** from another phone via link or code. **Min 2, max 6 players.**
+- **Join room** from another phone via link or code. **Min 1, max 6 players**
+  (see §4 for why solo is allowed).
 - Lobby: each player gets a **car number** and a colour, toggles "Ready".
-- Host starts the race when 2–6 players are present and ready (or force-starts).
+- Host starts the race when 1–6 players are present and ready (or force-starts).
 - **Synchronised 3-2-1-GO countdown**, then everyone races the same track.
-- Top-down 2D kart racing, **3 laps**, on-screen touch controls, boost pads,
-  soft off-track slowdown (no walls, no crashes, no destruction).
+- Top-down 2D kart racing, **3 laps**, on-screen touch controls, boost pads.
+- A **grass shoulder** that costs speed, and a **barrier** just outside it so a
+  kart can never leave the circuit. No crashes, no destruction.
+- The camera **turns with the kart**, so "left" always means left on screen.
+- **Ramming**: driving into a rival rewards the aggressor and briefly slows the
+  victim. Resolved on the server — see §7a.
 - Rivals shown as translucent **ghost karts** (position broadcast best-effort).
 - Server owns the authoritative **finish times and final standings**.
 - **Results screen**: podium + "Car 07 buys the coffee ☕" reveal animation.
@@ -47,13 +52,16 @@ non-binding suggestion shown with a disclaimer.
 
 ### Out of scope (V1) — do not build
 
-- Live kart-to-kart collisions / contact physics (Phase 2, see §12).
+- **Physical** kart-to-kart deflection — karts still pass through each other.
+  Ramming changes speed only (§7a). Making karts bounce off one another needs
+  the authoritative tick described in §12.
 - Accounts, logins, friend lists, chat, or any free-text input from players.
 - Persistent leaderboards, profiles, XP, unlockables, cosmetics store.
 - Real money, wagering, linking the result to an actual order or bill total.
 - Native iOS/Android app builds (Capacitor is a later, separate effort).
-- Server-side physics simulation or authoritative movement (V1 trusts clients
-  for _movement_, validates only _timing and plausibility_ — see §7).
+- Server-side physics simulation or authoritative movement. The server never
+  simulates a kart: it validates _timing and plausibility_ (§7) and resolves
+  _contact_ from reported positions (§7a). Movement itself is client-side.
 - Matchmaking with strangers. Rooms are private, code-only.
 - Sound is optional; if added it must default to muted and be toggleable.
 
@@ -74,9 +82,9 @@ repository → model`. Do not scatter game files into the existing
    models; auth; checkout; cart; admin; reports; CORS origin list (reuse it);
    existing tests. A diff that modifies any existing model or the order/auth
    flow is wrong.
-5. **New MongoDB collections only:** `gamerooms`, `gameresults`. Both carry a
-   TTL index so they self-delete (see §6). No cross-references to shop
-   collections.
+5. **One new MongoDB collection only:** `gameresults`, carrying a TTL index so
+   it self-deletes. Rooms are held in memory, not in Mongo (see §6). No
+   cross-references to shop collections.
 6. **Feature flag.** Backend env `GAME_ENABLED` (default `false`), frontend env
    `VITE_GAME_ENABLED` (default `false`). When off: the router is not mounted,
    the nav entry is hidden, routes redirect to `/`. Shipping the code dark must
@@ -93,6 +101,11 @@ repository → model`. Do not scatter game files into the existing
 
 ## 4. Player identity & car numbers
 
+- **Field size is 1 to 6.** `MIN_PLAYERS` is 1 so the circuit can be tested on a
+  single phone, and because a lone customer waiting for a friend may as well do
+  a lap. It is one constant in the contract; set it back to 2 to make the game
+  strictly social again and nothing else needs changing — the service test
+  covers both rules.
 - **No names, no PII.** A player is: a server-generated `playerId` (opaque,
   stored in that phone's `localStorage` under `kaapi-karts:playerId`), a **car
   number**, and a **car colour**.
@@ -113,7 +126,7 @@ repository → model`. Do not scatter game files into the existing
 ## 5. Room lifecycle (server-authoritative state machine)
 
 ```
-LOBBY ──(host starts, 2–6 ready)──▶ COUNTDOWN ──(3s)──▶ RACING
+LOBBY ──(host starts, 1–6 ready)──▶ COUNTDOWN ──(3s)──▶ RACING
   ▲                                                        │
   │                                              (all finished OR 150s cap)
   │                                                        ▼
@@ -121,7 +134,7 @@ LOBBY ──(host starts, 2–6 ready)──▶ COUNTDOWN ──(3s)──▶ RA
                                                            │
                                     (idle 5 min OR host closes OR empty)
                                                            ▼
-                                                         CLOSED  (row TTL-expires)
+                                                        CLOSED  (swept from memory)
 ```
 
 - Only the **host** (room creator; auto-promote the next player if the host
@@ -132,13 +145,18 @@ LOBBY ──(host starts, 2–6 ready)──▶ COUNTDOWN ──(3s)──▶ RA
 - `COUNTDOWN` start timestamp (`raceStartsAt`, server clock) is broadcast so all
   phones start the same instant; clients schedule GO locally against it and
   should NTP-style offset-correct using a `serverTime` ping on connect.
-- **Mid-race disconnect:** the kart becomes an auto-pilot "ghost" that keeps
-  moving at reduced speed so it can still be ranked (normally last). If the
-  player reconnects before the cap, they resume control.
+- **Mid-race disconnect:** the slot is kept and marked `isConnected: false`, but
+  the kart does **not** keep driving — there is no auto-pilot. It stops
+  reporting, its `progress` freezes at the last packet received, and at the cap
+  it is ranked on that frozen distance, which in practice means last. If the
+  player reconnects before the cap they resume control from where the engine
+  has carried on locally. (An earlier draft of this spec promised auto-pilot;
+  it was never built, and the leave-confirmation copy now says what actually
+  happens.)
 - **Everyone leaves:** room closes immediately.
-- **Room row** persists only enough to allow reconnect; TTL 60 min from
-  `lastActivityAt`. `gameresults` TTL 24 h (only for a short "recent races"
-  list; contains no PII).
+- **Rooms live in memory** with a sweeper that closes anything idle past
+  `GAME_ROOM_TTL_MINUTES`. `gameresults` rows carry a 24 h TTL (a short "recent
+  races" record; contains no PII).
 
 ## 6. Data models
 
@@ -200,6 +218,39 @@ what a phone reports:
   secrets but are not enumerable-cheap.
 - No player-supplied HTML/markdown is rendered anywhere.
 
+## 7a. Ramming (server-resolved contact)
+
+Driving into a rival rewards the aggressor and briefly unsettles the victim, so
+the pack fights rather than filing round in a queue.
+
+**This cannot be done on the clients, and the reason is worth remembering.** Each
+phone simulates only its own kart and draws rivals from interpolated ghosts. If
+each detected its own collisions, both sides of a crash would independently
+conclude they were the one doing the ramming, and both would award themselves
+the boost — nobody is ever penalised, and the two screens disagree about whether
+contact even happened. The server already receives every position at 15 Hz for
+ranking, so it is the only place one consistent verdict can be reached.
+
+Rules, all constants in `RAM` in the contract, logic in
+`apps/api/src/modules/game/contacts.ts` (pure, unit-tested):
+
+- Contact when two karts are within `RAM.contactRadius` of each other.
+- The **aggressor** is whichever kart is aiming more squarely at the other,
+  measured as a dot product of its heading against the direction to the rival.
+  It must clear `RAM.minAim`, so a nose-to-tail shunt counts and two karts
+  running shoulder to shoulder do not.
+- A **dead-on head-to-head rewards nobody**: neither is more to blame, so no
+  verdict is issued rather than handing one player an arbitrary advantage.
+- A **per-pair cooldown** (`RAM.cooldownMs`) stops one scrape emitting a burst
+  of hits at broadcast rate.
+- Karts that have finished, or have not yet reported a position, are skipped.
+- The server broadcasts one `race:contact` verdict; both clients apply it. The
+  aggressor gets `RAM.boostFactor` for `RAM.boostMs`; the victim gets
+  `RAM.slowFactor` for `RAM.slowMs` — deliberately gentler, so being hit stings
+  without ending the race. Clients never award themselves a ram effect.
+- Karts do **not** physically deflect each other. Ramming is a speed effect
+  only; real push-apart needs the authoritative tick in §12.
+
 ## 8. API & realtime contract
 
 ### REST (`/api/game`, mounted only when `GAME_ENABLED`)
@@ -235,15 +286,21 @@ Client → server:
 Server → client:
 
 - `room:state` — full authoritative snapshot on every meaningful change.
-- `serverTime` `{ now }` — reply to a `ping` for clock-offset correction.
-- `race:countdown` `{ raceStartsAt }`
-- `race:go`
-- `race:ghost` `{ carNumber, x, y, angle, lap }` — other players' positions.
+- `race:countdown` `{ raceStartsAt, serverTime }`
+- `race:go` `{ raceEndsAt, serverTime }`
+- `race:ghost` `{ carNumber, x, y, heading, lap, progress }` — rivals' positions.
+- `race:contact` `{ dasherCarNumber, victimCarNumber }` — the ram verdict (§7a).
 - `race:playerFinished` `{ carNumber, rank, finishMs }`
 - `race:results` `{ standings[], payerCarNumber }`
-- `error` `{ code, message }` — codes: `ROOM_FULL`, `ROOM_NOT_FOUND`,
-  `ROOM_IN_PROGRESS`, `NUMBER_TAKEN`, `INVALID_NUMBER`, `NOT_HOST`,
-  `NOT_ENOUGH_PLAYERS`, `PLAYERS_NOT_READY`.
+- `game:error` `{ code, message }` — see `GameErrorCode` in the contract for the
+  full list.
+
+Clock offset is a `time:ping` **acknowledgement** carrying the server's `now`,
+not a separate broadcast.
+
+The authoritative event and payload shapes are the `ServerToClientEvents` /
+`ClientToServerEvents` maps in `game-contract.ts`. That file is the contract;
+this list is a summary and the code wins if they ever disagree.
 
 Socket CORS = the existing `CLIENT_URL` origin. Auth = none; the `playerId` is
 the only credential and only scopes a player to their own slot in one room.
@@ -335,18 +392,32 @@ Every screen needs explicit **loading / empty / error** states (project rule).
 
 6. **Race** — the canvas
    - HUD: your car number + colour (corner), **lap x/3**, **race timer**
-     (counts up, tabular-nums), mini position list (P1–P6 by progress),
-     a "boost ready" pip.
+     (counts up, tabular-nums), mini position list (P1–P6 by progress), and a
+     three-state boost chip — _Boosting!_ / _Drive over a ⚡ pad_ / _Boost
+     charging_. Two states were not enough: players could not tell a boost had
+     actually fired.
    - Controls (default): full-height **left** and **right** touch zones (hold to
      steer), a **brake** button bottom-centre, auto-accelerate. Big, thumb-
      reachable, translucent so they don't hide the track.
-   - Rivals render as **translucent ghost karts** with their number.
-   - Off-track = visible slic/slow + tint, no stop, no damage.
+   - **The camera turns with the kart** so its nose always points up the screen.
+     This is not decoration: with a fixed camera, steering reads as inverted
+     whenever you drive back down the screen, which is exactly what playtesting
+     reported. Car numbers are counter-rotated to stay upright, and boost pads
+     use a bolt rather than a chevron because a directional arrow drawn in world
+     space points somewhere meaningless once the view rotates.
+   - Rivals render as **translucent ghost karts** with their number. They pass
+     through you; contact is a speed effect only (§7a).
+   - A ram shows a centre-screen banner — green "Knocked NN wide! +Speed" when
+     you dealt it, red "Car NN hit you!" when you took it — plus distinct
+     haptics.
+   - Grass shoulder = visible slow + tint; a **barrier** just beyond it keeps the
+     kart on the circuit. No stop, no damage.
    - If the socket drops mid-race: keep rendering locally, show a small
-     "offline — still racing" chip, submit `race:finish` via REST fallback
-     (`GET/POST` results) when reconnected or at the cap.
-   - Pause is **not** allowed (multiplayer); backgrounding the tab = your kart
-     auto-pilots (§5).
+     "offline — still racing" chip, submit the finish via the REST fallback when
+     reconnected or at the cap.
+   - Pause is **not** allowed (multiplayer). Backgrounding the tab pauses the
+     render loop; the kart does not drive itself, and a player who never returns
+     is ranked on frozen progress (§5).
 
 7. **Results**
    - Podium (P1–P3) with car numbers rising in, then the full standings list.
@@ -366,7 +437,9 @@ Every screen needs explicit **loading / empty / error** states (project rule).
 Backend (`apps/api/tests/game-*.test.ts`, Vitest + Supertest):
 
 - Room create returns a valid unique code; rate limiter blocks the 11th/hour.
-- Join enforces **min 2 / max 6**; 7th join → `ROOM_FULL`.
+- Join enforces **min 1 / max 6**; 7th join → `ROOM_FULL`. The service test
+  asserts both the solo-allowed and solo-refused rules, so restoring MIN_PLAYERS
+  to 2 needs no test rewrite.
 - Car-number assignment: lowest-free, uniqueness, release on leave, reject taken
   / out-of-range.
 - State machine: illegal transitions rejected (e.g. `race:start` with 1 player,
@@ -380,8 +453,32 @@ Backend (`apps/api/tests/game-*.test.ts`, Vitest + Supertest):
 - Host leaves → next player promoted.
 - TTL fields set; expired room → `ROOM_NOT_FOUND`.
 - A socket integration test with 2–3 clients running a full LOBBY→RESULTS race.
+- **Ram resolution** (`game-contacts.test.ts`, against the pure functions):
+  a nose-to-tail shunt names exactly one aggressor; **the verdict is identical
+  whichever car's packet arrives** (the property the whole server-side design
+  exists to guarantee); side-by-side and out-of-range pairs are ignored; a
+  dead-on head-to-head rewards nobody; the per-pair cooldown suppresses repeats;
+  finished and not-yet-reporting karts are skipped; a pile-up can hit two
+  rivals at once; cooldown entries are pruned.
 
-Frontend (`apps/web/src/features/kaapi-karts/**/*.test.tsx`, Vitest + RTL):
+Frontend (`apps/web/tests/kaapi-karts-engine.test.ts`, pure engine modules):
+
+- Spline is a closed loop with a monotonic arc-length table, and its measured
+  length matches the contract's `approximateLapLength`. **Re-measure and update
+  that constant whenever `controlPoints` change** — the test will tell you.
+- Physics: approaches but never exceeds `maxSpeed`; braking decelerates and
+  never reverses; the grass shoulder clamps to `offTrackSpeedFactor`; steering
+  authority falls with speed.
+- **Barriers**: full lock held for ten seconds never crosses the barrier, and a
+  kart dumped in the infield is shepherded back onto the circuit.
+- Lap tracking: forward crossings count, backwards and short-cut crossings do
+  not, and a finish emits exactly `TOTAL_LAPS` splits.
+- **Race tuning**: an auto-driver following the centreline completes three laps
+  inside the 90–150 s window, and its finish satisfies the server's plausibility
+  rule — which is what stops the engine and server drifting apart on the
+  cumulative-vs-per-lap reading of `lapSplits`.
+
+Frontend UI (`apps/web/tests/kaapi-karts-ui.test.tsx`, Vitest + RTL):
 
 - How-to-play shows on first visit, hidden after `seenHowTo`, reopenable.
 - Lobby renders numbered tiles; ready toggle & number picker disabled outside
@@ -541,7 +638,7 @@ Everything in `AGENTS.md` §17, plus:
 
 - A full 3-player race can be played start-to-finish on three phones on the
   same room code, on mobile Chrome and mobile Safari.
-- Min 2 / max 6 enforced server-side; car numbers always unique and validated
+- Min 1 / max 6 enforced server-side; car numbers always unique and validated
   on the server.
 - Last place is correctly identified as the payer, including when players don't
   finish or disconnect.
@@ -554,3 +651,57 @@ Everything in `AGENTS.md` §17, plus:
   permanently and no PII is collected.
 - `README.md` documents the feature, the flags, the Render cold-start caveat,
   and the new Atlas indexes.
+
+## 19. Where the code lives
+
+```text
+apps/api/src/modules/game/
+  game-contract.ts        THE contract — constants, track, wire types, socket maps
+  contacts.ts             pure ram resolution (§7a)
+  standings.ts            pure finish validation, ranking, payer selection
+  room-store.ts           in-memory rooms + code generation + TTL sweeper
+  game-service.ts         lifecycle, car numbers, state machine, race orchestration
+  game-socket.ts          Socket.IO namespace and the listener that broadcasts
+  game-routes.ts          REST router + the room-creation rate limiter
+  game-result-model.ts    the one Mongoose model (gameresults, TTL index)
+  index.ts                createGameModule() — what server.ts wires
+
+apps/web/src/features/kaapi-karts/
+  game-contract.ts        byte-for-byte mirror of the API copy
+  engine/                 framework-free canvas engine (no React, no sockets)
+    track-geometry.ts     Catmull-Rom spline, arc length, closest point, grid
+    kart-physics.ts       pure fixed-step integrator, barriers, boost, ram effects
+    lap-tracker.ts        pure lap counting and cumulative splits
+    track-renderer.ts     tarmac, kerbs, chequer, boost pads
+    kart-renderer.ts      kart body and upright car number
+    race-engine.ts        RAF loop, rotating camera, ghosts, adaptive quality
+  use-game-socket.ts      typed Socket.IO client, clock offset, reconnect
+  RacePage.tsx            engine ↔ socket integration
+  (remaining .tsx)        hub, join, how-to-play, lobby, HUD, controls, results
+```
+
+**The two `game-contract.ts` copies must stay identical.** Change one, copy it
+over the other. They are the only reason the client and server agree on the
+track, the timings and the wire format.
+
+## 20. Current tuning values
+
+Handy summary. The contract is authoritative; this table is a reading aid.
+
+| Setting              | Value         | Note                                    |
+| -------------------- | ------------- | --------------------------------------- |
+| Players              | 1–6           | `MIN_PLAYERS` is 1; see §4              |
+| Laps                 | 3             |                                         |
+| Race cap             | 150 s         | field ranked by progress at the flag    |
+| Lap length           | 5358 units    | measured; asserted by the engine test   |
+| Top speed            | 190 u/s       | a flawless lap is ~28.2 s               |
+| Boost speed          | 275 u/s       | pads, ~1.6 s                            |
+| Clean lap / race     | ~31 s / ~93 s | measured by the auto-driver test        |
+| Plausibility floor   | 20 s / lap    | unreachable by honest play, with margin |
+| Grass shoulder       | to 1.32×      | half-width, then a barrier              |
+| Ram reward / penalty | ×1.28 / ×0.72 | 1.3 s / 0.9 s, 1.5 s per-pair cooldown  |
+| Camera view          | 700×1010      | world units, rotates with the kart      |
+
+If you change the track's `controlPoints`, re-run the engine test: it measures
+the spline and will fail until `approximateLapLength` matches, and the tuning
+test will tell you whether a race still lands in the 90–150 s window.

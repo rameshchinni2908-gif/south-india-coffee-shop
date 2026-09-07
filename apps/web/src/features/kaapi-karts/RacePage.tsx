@@ -565,8 +565,8 @@ export const RacePage = () => {
         <DialogTitle>Leave the race?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Your kart will switch to auto-pilot and will almost certainly finish last — which means
-            you buy the coffee.
+            Your kart stops where it is and is ranked on the distance you had covered, so you will
+            almost certainly finish last — which means you buy the coffee.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

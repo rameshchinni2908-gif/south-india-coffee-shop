@@ -188,12 +188,18 @@ updates record price history in the same MongoDB transaction.
 ## Kaapi Karts (waiting-room mini-game)
 
 An optional kart race that a table of customers plays on their own phones while
-their order is prepared, to decide who buys the round. 2–6 players per room,
-three laps, capped at 2 minutes 30 seconds. It is entertainment only: it never
-reads or writes orders, payments, stock, or customer records, and the "who pays"
-result is an explicit suggestion, not an instruction.
+their order is prepared, to decide who buys the round. 1–6 players per room,
+three laps, capped at 2 minutes 30 seconds — a clean race takes about 95
+seconds. Karts can ram each other for a speed advantage, barriers keep everyone
+on the circuit, and last place buys the coffee. It is entertainment only: it
+never reads or writes orders, payments, stock, or customer records, and the "who
+pays" result is an explicit suggestion, not an instruction.
 
-The full specification lives in [`KAAPI-KARTS.md`](KAAPI-KARTS.md).
+The full specification lives in [`KAAPI-KARTS.md`](KAAPI-KARTS.md), including
+the current tuning values and a map of where the code lives.
+
+Solo racing is allowed (`MIN_PLAYERS` is 1) so the track can be tested on one
+phone; set that constant back to 2 to make the game strictly social.
 
 ### Enabling it
 
