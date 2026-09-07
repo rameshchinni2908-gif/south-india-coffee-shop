@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const environmentSchema = z.object({
   VITE_API_BASE_URL: z.string().url().default("http://localhost:4000"),
-  VITE_SHOP_NAME: z.string().trim().min(1).default("JRG South India Coffee Shop"),
+  VITE_SHOP_NAME: z.string().trim().min(1).default("JRG South Indian Coffee Shop"),
   VITE_GAME_ENABLED: z
     .enum(["true", "false"])
     .default("false")
@@ -12,6 +12,11 @@ const environmentSchema = z.object({
 
 const parsedEnvironment = environmentSchema.parse(import.meta.env);
 const configuredShopName = parsedEnvironment.VITE_SHOP_NAME;
+
+export const resolveShopName = (name: string): string =>
+  /^(?:JRG\s+)?South\s+India(?:n)?\s+Coffee\s+Shop$/i.test(name.trim())
+    ? "JRG South Indian Coffee Shop"
+    : name.trim();
 
 interface ResolveApiBaseUrlOptions {
   configuredApiBaseUrl: string;
@@ -82,10 +87,7 @@ export const environment = {
     browserOrigin: window.location.origin,
     isProduction: import.meta.env.PROD,
   }),
-  shopName:
-    configuredShopName === "South India Coffee Shop"
-      ? "JRG South India Coffee Shop"
-      : configuredShopName,
+  shopName: resolveShopName(configuredShopName),
   gameEnabled: parsedEnvironment.VITE_GAME_ENABLED,
   gameSocketUrl: resolvedGameSocketUrl,
   gameSocketMisconfigured: isGameSocketMisconfigured({

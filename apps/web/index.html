@@ -5,15 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Browse fresh South Indian coffee, tea, breakfast, snacks, and packaged favourites for pickup."
+      content="Browse fresh coffee, tea, breakfast, snacks, and packaged favourites for pickup at JRG South Indian Coffee Shop."
     />
     <meta name="theme-color" content="#4a2514" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    <title>South India Coffee Shop</title>
+    <title>JRG South Indian Coffee Shop</title>
   </head>
+
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        role="status"
+        aria-label="Loading shop"
+        style="
+          min-height: 100svh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #fbf6ee;
+          color: #6f3219;
+          font: 16px system-ui;
+        "
+      >
+        <svg width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
+          <circle cx="64" cy="64" r="60" fill="#f1dfc2" />
+          <path
+            d="M37 52h54l-7 40c-2 10-38 10-40 0z"
+            fill="#d5a456"
+            stroke="#8a5429"
+            stroke-width="2"
+          />
+          <ellipse
+            cx="64"
+            cy="52"
+            rx="27"
+            ry="8"
+            fill="#6f3219"
+            stroke="#e5bb75"
+            stroke-width="4"
+          />
+          <path
+            d="M28 102h72M53 39c-9-9 9-13 0-22m20 22c-9-9 9-13 0-22"
+            fill="none"
+            stroke="#a85d36"
+            stroke-width="3"
+            stroke-linecap="round"
+          />
+        </svg>
+        <p>Brewing something good…</p>
+        <a href="" style="color: inherit; font-size: 14px">Taking too long? Reload</a>
+        <noscript>Please enable JavaScript to browse the menu and place a pickup order.</noscript>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

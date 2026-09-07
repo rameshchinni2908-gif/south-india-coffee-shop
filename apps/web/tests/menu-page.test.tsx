@@ -1,11 +1,12 @@
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppRoutes } from "../src/App.js";
+import { getCategoryArtwork } from "../src/features/menu/category-artwork.js";
 import { theme } from "../src/theme.js";
 
 const category = {
@@ -112,11 +113,11 @@ describe("customer menu", () => {
     expect(screen.getAllByText(/₹45/).length).toBeGreaterThan(0);
     expect(screen.getByText("1 item")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "JRG South India Coffee Shop home" }),
+      screen.getByRole("link", { name: "JRG South Indian Coffee Shop home" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Coffee category presentation" })).toHaveAttribute(
       "src",
-      "/images/categories/coffee.jpg",
+      getCategoryArtwork("coffee", "Coffee"),
     );
   });
 
@@ -127,6 +128,25 @@ describe("customer menu", () => {
     await screen.findByRole("heading", { name: "Filter Coffee" });
     expect(screen.getByRole("main")).toHaveAttribute("id", "menu-results");
     expect(screen.getByRole("main")).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("uses responsive category photos after a custom image fails, then a download-free placeholder", async () => {
+    installSuccessfulFetch([{ ...product, imageUrl: "https://example.com/coffee.jpg" }]);
+    renderMenu();
+
+    const customImage = await screen.findByRole("img", { name: "Filter Coffee" });
+    expect(customImage).not.toHaveAttribute("srcset");
+    expect(customImage).toHaveAttribute("loading", "lazy");
+    expect(customImage).toHaveAttribute("decoding", "async");
+    fireEvent.error(customImage);
+
+    const fallbackImage = screen.getByRole("img", { name: "Coffee category presentation" });
+    expect(fallbackImage.getAttribute("srcset")).toContain("coffee-480.jpg 480w");
+    expect(fallbackImage.getAttribute("srcset")).toContain("coffee-768.jpg 768w");
+    fireEvent.error(fallbackImage);
+
+    expect(screen.getByRole("img", { name: "Filter Coffee image placeholder" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Add Filter Coffee Regular to cart" })).toBeEnabled();
   });
 
   it("adds an available product variant to the cart", async () => {

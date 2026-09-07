@@ -1,15 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getCategories, getProducts, type ProductFilters } from "./menu-api.js";
+import type { ProductFilters } from "./menu-api.js";
+import { categoryQueryOptions, productQueryOptions } from "./menu-query-options.js";
 
-export const useCategories = () =>
-  useQuery({
-    queryKey: ["categories"],
-    queryFn: ({ signal }) => getCategories(signal),
-  });
+export const useCategories = () => useQuery(categoryQueryOptions());
 
-export const useProducts = (filters: ProductFilters) =>
-  useQuery({
-    queryKey: ["products", filters],
-    queryFn: ({ signal }) => getProducts(filters, signal),
-  });
+export const useProducts = (filters: ProductFilters) => useQuery(productQueryOptions(filters));

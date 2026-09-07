@@ -6,12 +6,11 @@ import { SiteHeader } from "../../components/SiteHeader.js";
 import type { Category } from "../../types/catalog.js";
 import { MenuFilters } from "./MenuFilters.js";
 import { MenuHero } from "./MenuHero.js";
-import { getMenuFilterForm, getPage, type MenuFilterForm } from "./menu-filter-schema.js";
+import { getMenuFilterForm, type MenuFilterForm } from "./menu-filter-schema.js";
 import { useCategories, useProducts } from "./menu-queries.js";
+import { getMenuProductFilters } from "./menu-query-options.js";
 import { MenuEmptyState, MenuErrorState, MenuLoadingState } from "./MenuStates.js";
 import { ProductCard } from "./ProductCard.js";
-
-const PAGE_SIZE = 12;
 
 const getCategory = (categories: Category[], categoryId: string): Category | undefined =>
   categories.find((category) => category.id === categoryId);
@@ -19,28 +18,8 @@ const getCategory = (categories: Category[], categoryId: string): Category | und
 export const MenuPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const filterForm = useMemo(() => getMenuFilterForm(searchParams), [searchParams]);
-  const page = getPage(searchParams);
   const categoriesQuery = useCategories();
-  const productFilters = useMemo(() => {
-    const [sortBy, sortOrder] = filterForm.sort.split("-") as [
-      "name" | "createdAt" | "updatedAt",
-      "asc" | "desc",
-    ];
-    const filters = {
-      page,
-      limit: PAGE_SIZE,
-      available: filterForm.available === "true",
-      sortBy,
-      sortOrder,
-    } as const;
-
-    return {
-      ...filters,
-      ...(filterForm.search ? { search: filterForm.search } : {}),
-      ...(filterForm.category ? { category: filterForm.category } : {}),
-      ...(filterForm.vegetarian !== "all" ? { vegetarian: filterForm.vegetarian === "true" } : {}),
-    };
-  }, [filterForm, page]);
+  const productFilters = useMemo(() => getMenuProductFilters(searchParams), [searchParams]);
   const productsQuery = useProducts(productFilters);
   const categories = categoriesQuery.data ?? [];
 
@@ -130,7 +109,14 @@ export const MenuPage = () => {
             </Typography>
           </Stack>
 
-          {productsQuery.isPending && <MenuLoadingState />}
+          {productsQuery.fetchStatus === "paused" && (
+            <Alert severity="info" sx={{ mb: 2 }} role="status">
+              You’re offline. The menu will refresh when your connection returns.
+            </Alert>
+          )}
+          {productsQuery.isPending && (
+            <MenuLoadingState paused={productsQuery.fetchStatus === "paused"} />
+          )}
           {productsQuery.isError && <MenuErrorState onRetry={() => void productsQuery.refetch()} />}
           {productsQuery.data && productsQuery.data.products.length === 0 && (
             <MenuEmptyState onClear={clearFilters} />

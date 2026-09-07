@@ -1,4 +1,4 @@
-# AGENTS.md — South India Coffee Shop Application
+# AGENTS.md — JRG South Indian Coffee Shop Application
 
 ## 1. Project Goal
 

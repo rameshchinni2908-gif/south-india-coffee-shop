@@ -5,7 +5,24 @@ import {
   isGameSocketMisconfigured,
   resolveApiBaseUrl,
   resolveGameSocketUrl,
+  resolveShopName,
 } from "../src/config/environment.js";
+
+describe("shop branding", () => {
+  it.each([
+    "South India Coffee Shop",
+    "JRG South India Coffee Shop",
+    "South Indian Coffee Shop",
+    "JRG South Indian Coffee Shop",
+    "  jrg south india coffee shop  ",
+  ])("corrects the current and legacy setting %s", (name) => {
+    expect(resolveShopName(name)).toBe("JRG South Indian Coffee Shop");
+  });
+
+  it("preserves a different explicitly configured shop name", () => {
+    expect(resolveShopName("  Another Coffee Shop  ")).toBe("Another Coffee Shop");
+  });
+});
 
 describe("deployed API routing", () => {
   it("uses the frontend origin for secure production deployments", () => {

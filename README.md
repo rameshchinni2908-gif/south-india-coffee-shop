@@ -1,6 +1,6 @@
-# South India Coffee Shop
+# JRG South Indian Coffee Shop
 
-Monorepo for the South India Coffee Shop application.
+Monorepo for the JRG South Indian Coffee Shop application.
 
 ## Prerequisites
 
@@ -336,6 +336,36 @@ linting, type checking, all tests, and production builds for pull requests and
 pushes to `main`.
 
 ## Deployment configuration
+
+### Slow connections and the mobile welcome
+
+The welcome illustration is inline SVG with a short CSS steam animation; it
+needs no image request or animation library and respects reduced motion. A
+small coffee placeholder is also included in the HTML so the initial JavaScript
+download does not leave an empty page. Failed route downloads offer a reload.
+
+On a direct menu visit, category and product requests start before the lazy menu
+screen finishes loading. They share query keys and URL filters with the screen,
+so requests already in flight are reused. Other routes do not prefetch the menu.
+The existing 30-second query freshness and server-side order validation remain
+in place. Offline queries resume on reconnect, and a long initial menu request
+shows an explanation after eight seconds without restarting the request.
+
+Category photos use lazy loading, asynchronous decoding, and 480/768-pixel JPEG
+variants in `apps/web/src/assets/categories`. Vite gives them content-hashed
+URLs. Across the five photos, the new variants total about 107 KB / 209 KB,
+compared with 486 KB for the originals (78% / 57% smaller). The browser chooses
+the size for its viewport and pixel density. Custom product image URLs are
+preserved; upload appropriately sized photos for those as well. Original public
+files remain available for older pages. No service worker or persistent menu
+cache is used, and ordering still requires connectivity.
+
+These improvements reduce download cost and overlap requests; they do not
+eliminate Render's free-instance cold start. The host may still take time to
+wake after inactivity. Regression coverage includes request deduplication,
+offline recovery, slow-response feedback, image fallback, and failed route
+downloads (`menu-performance.test.tsx`, `menu-page.test.tsx`, and
+`route-loading.test.tsx`).
 
 ### Live production
 

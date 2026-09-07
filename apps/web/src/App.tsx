@@ -1,10 +1,12 @@
-import { Box, CircularProgress, CssBaseline } from "@mui/material";
+import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { environment } from "./config/environment.js";
+import { PageLoading } from "./components/PageLoading.js";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
 import { queryClient } from "./lib/query-client.js";
@@ -77,38 +79,30 @@ const KaapiKartsRoutes = lazy(async () => {
   return { default: module.KaapiKartsRoutes };
 });
 
-const RouteLoading = () => (
-  <Box
-    role="status"
-    aria-label="Loading menu"
-    sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
-  >
-    <CircularProgress />
-  </Box>
-);
-
 export const AppRoutes = () => (
   <CartProvider>
-    <Suspense fallback={<RouteLoading />}>
-      <Routes>
-        <Route path="/" element={<MenuPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
-        <Route path="/track-order" element={<OrderTrackingPage />} />
-        {environment.gameEnabled ? (
-          <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
-        ) : null}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route element={<AdminGate />}>
-          <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-          <Route path="/admin/orders" element={<AdminOrdersPage />} />
-          <Route path="/admin/products" element={<AdminProductsPage />} />
-          <Route path="/admin/staff" element={<AdminStaffPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+    <RouteErrorBoundary>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/" element={<MenuPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} />
+          <Route path="/track-order" element={<OrderTrackingPage />} />
+          {environment.gameEnabled ? (
+            <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
+          ) : null}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route element={<AdminGate />}>
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
+            <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/staff" element={<AdminStaffPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </RouteErrorBoundary>
   </CartProvider>
 );
 

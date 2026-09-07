@@ -11,30 +11,50 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 
-export const MenuLoadingState = () => (
-  <Box
-    aria-label="Loading menu"
-    sx={{
-      display: "grid",
-      gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" },
-      gap: 2.5,
-    }}
-  >
-    {Array.from({ length: 6 }, (_, index) => (
-      <Card key={index} variant="outlined">
-        <Skeleton variant="rectangular" height={210} animation="wave" />
-        <CardContent>
-          <Skeleton width="40%" />
-          <Skeleton height={38} width="75%" />
-          <Skeleton />
-          <Skeleton width="88%" />
-          <Skeleton sx={{ mt: 2 }} width="35%" />
-        </CardContent>
-      </Card>
-    ))}
-  </Box>
-);
+export const MenuLoadingState = ({ paused = false }: { paused?: boolean }) => {
+  const [isSlow, setIsSlow] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsSlow(true), 8_000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return (
+    <>
+      {isSlow && !paused && (
+        <Alert severity="info" role="status" sx={{ mb: 2 }}>
+          The menu is taking a little longer. We’re still connecting — no need to refresh.
+        </Alert>
+      )}
+      <Box
+        aria-label="Loading menu"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" },
+          gap: 2.5,
+          "@media (prefers-reduced-motion: reduce)": {
+            "& .MuiSkeleton-root, & .MuiSkeleton-root::after": { animation: "none" },
+          },
+        }}
+      >
+        {Array.from({ length: 6 }, (_, index) => (
+          <Card key={index} variant="outlined">
+            <Skeleton variant="rectangular" height={210} animation={false} />
+            <CardContent>
+              <Skeleton width="40%" />
+              <Skeleton height={38} width="75%" />
+              <Skeleton />
+              <Skeleton width="88%" />
+              <Skeleton sx={{ mt: 2 }} width="35%" />
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    </>
+  );
+};
 
 interface MenuErrorStateProps {
   onRetry(): void;

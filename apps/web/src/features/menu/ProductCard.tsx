@@ -16,7 +16,7 @@ import { useState } from "react";
 import { formatRupees } from "../../lib/currency.js";
 import type { Product } from "../../types/catalog.js";
 import { useCart } from "../cart/use-cart.js";
-import { getCategoryArtwork } from "./category-artwork.js";
+import { getCategoryArtwork, getCategoryArtworkSrcSet } from "./category-artwork.js";
 
 interface ProductCardProps {
   product: Product;
@@ -83,12 +83,18 @@ export const ProductCard = ({
           image={imageSource}
           alt={isProductImage ? product.name : `${categoryName ?? "Menu"} category presentation`}
           loading="lazy"
+          decoding="async"
+          width={768}
+          height={576}
+          srcSet={!isProductImage ? getCategoryArtworkSrcSet(imageSource) : undefined}
+          sizes="(min-width: 1200px) 368px, (min-width: 600px) calc((100vw - 72px) / 2), calc(100vw - 32px)"
           onError={() =>
             setFailedImages((current) =>
               current.includes(imageSource) ? current : [...current, imageSource],
             )
           }
           sx={{
+            width: "100%",
             height: { xs: 190, sm: 210 },
             objectFit: "cover",
             transform: "scale(1)",

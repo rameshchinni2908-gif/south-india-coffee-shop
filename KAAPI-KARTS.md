@@ -16,7 +16,7 @@
 
 A tiny multiplayer kart race that a table of customers plays on their own phones
 while waiting for their order, to light-heartedly decide **who pays the bill**
-(last place pays). It lives inside the existing JRG South India Coffee Shop web
+(last place pays). It lives inside the existing JRG South Indian Coffee Shop web
 app as a sub-menu, is mobile-first, medium difficulty, and one race finishes in
 **under 2 minutes 30 seconds**.
 
