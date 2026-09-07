@@ -41,9 +41,9 @@ const ScorePanel = ({ label, value }: { label: string; value: number }) => (
   <Paper
     variant="outlined"
     sx={{
-      px: 2,
+      px: { xs: 1.25, sm: 2 },
       py: 1,
-      minWidth: 92,
+      minWidth: { xs: 74, sm: 92 },
       textAlign: "center",
       borderColor: "rgba(111, 50, 25, 0.18)",
     }}
@@ -178,7 +178,17 @@ export const BeanMergePage = () => {
               <Typography variant="overline" color="secondary.dark">
                 Solo · no rush
               </Typography>
-              <Typography component="h1" variant="h4" sx={{ fontWeight: 800 }}>
+              {/* Shrunk on xs so the name stays on one line beside the scores;
+                  at h4 it wrapped and pushed the board down the phone screen. */}
+              <Typography
+                component="h1"
+                variant="h4"
+                sx={{
+                  fontWeight: 800,
+                  fontSize: { xs: "1.6rem", sm: "2.125rem" },
+                  lineHeight: 1.15,
+                }}
+              >
                 {GAME_DISPLAY_NAME}
               </Typography>
             </Box>
@@ -251,8 +261,11 @@ export const BeanMergePage = () => {
             aria-live="polite"
             sx={{
               position: "absolute",
-              width: 1,
-              height: 1,
+              // Must be "1px", not 1: MUI's sx treats a bare 0-1 number as a
+              // fraction, so `width: 1` compiles to 100% and this silently
+              // becomes a full-screen invisible box that doubles the page height.
+              width: "1px",
+              height: "1px",
               overflow: "hidden",
               clip: "rect(0 0 0 0)",
               whiteSpace: "nowrap",
