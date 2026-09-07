@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import vercelConfiguration from "../vercel.json";
-import { resolveApiBaseUrl, resolveGameSocketUrl } from "../src/config/environment.js";
+import {
+  isGameSocketMisconfigured,
+  resolveApiBaseUrl,
+  resolveGameSocketUrl,
+} from "../src/config/environment.js";
 
 describe("deployed API routing", () => {
   it("uses the frontend origin for secure production deployments", () => {
@@ -55,5 +59,37 @@ describe("game socket routing", () => {
         configuredApiBaseUrl: "https://south-india-coffee-shop-api.onrender.com",
       }),
     ).toBe("https://games.example.com");
+  });
+
+  // REST ignores VITE_API_BASE_URL on a deployed HTTPS origin, so it is easy to
+  // leave unset on the host and never notice until the lobby will not connect.
+  it("flags a deployed build still pointing the socket at localhost", () => {
+    expect(
+      isGameSocketMisconfigured({
+        socketUrl: "http://localhost:4000",
+        browserOrigin: "https://jrgsouthindiacoffeeshop.vercel.app",
+        isProduction: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("accepts a deployed build pointing at the HTTPS API origin", () => {
+    expect(
+      isGameSocketMisconfigured({
+        socketUrl: "https://south-india-coffee-shop-api.onrender.com",
+        browserOrigin: "https://jrgsouthindiacoffeeshop.vercel.app",
+        isProduction: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("leaves local development alone", () => {
+    expect(
+      isGameSocketMisconfigured({
+        socketUrl: "http://localhost:4000",
+        browserOrigin: "http://localhost:5173",
+        isProduction: false,
+      }),
+    ).toBe(false);
   });
 });

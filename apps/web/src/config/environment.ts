@@ -47,6 +47,35 @@ export const resolveGameSocketUrl = ({
   configuredApiBaseUrl: string;
 }): string => (configuredSocketUrl || configuredApiBaseUrl).replace(/\/$/, "");
 
+/**
+ * Catches the one misconfiguration that only breaks in production.
+ *
+ * REST ignores `VITE_API_BASE_URL` on a deployed HTTPS origin, so that variable
+ * is easy to leave unset on the host — which silently leaves the socket pointing
+ * at the localhost default. Detect it and let the UI say so, instead of the
+ * lobby hanging on "Reconnecting…" forever.
+ */
+export const isGameSocketMisconfigured = ({
+  socketUrl,
+  browserOrigin,
+  isProduction,
+}: {
+  socketUrl: string;
+  browserOrigin: string;
+  isProduction: boolean;
+}): boolean => {
+  if (!isProduction || !browserOrigin.startsWith("https://")) {
+    return false;
+  }
+
+  return !socketUrl.startsWith("https://") || /\/\/(localhost|127\.0\.0\.1)/.test(socketUrl);
+};
+
+const resolvedGameSocketUrl = resolveGameSocketUrl({
+  configuredSocketUrl: parsedEnvironment.VITE_GAME_SOCKET_URL,
+  configuredApiBaseUrl: parsedEnvironment.VITE_API_BASE_URL,
+});
+
 export const environment = {
   apiBaseUrl: resolveApiBaseUrl({
     configuredApiBaseUrl: parsedEnvironment.VITE_API_BASE_URL,
@@ -58,8 +87,10 @@ export const environment = {
       ? "JRG South India Coffee Shop"
       : configuredShopName,
   gameEnabled: parsedEnvironment.VITE_GAME_ENABLED,
-  gameSocketUrl: resolveGameSocketUrl({
-    configuredSocketUrl: parsedEnvironment.VITE_GAME_SOCKET_URL,
-    configuredApiBaseUrl: parsedEnvironment.VITE_API_BASE_URL,
+  gameSocketUrl: resolvedGameSocketUrl,
+  gameSocketMisconfigured: isGameSocketMisconfigured({
+    socketUrl: resolvedGameSocketUrl,
+    browserOrigin: window.location.origin,
+    isProduction: import.meta.env.PROD,
   }),
 };
