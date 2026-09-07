@@ -59,13 +59,18 @@ export interface KartRenderOptions {
   carNumber: number;
   alpha: number;
   boosting: boolean;
+  /**
+   * Rotation the camera has applied to the world, in radians. The car number is
+   * counter-rotated by it so it stays upright on screen while the track turns.
+   */
+  worldRotation: number;
 }
 
 /**
  * Draws one kart in world coordinates. The caller owns the camera transform.
  */
 export const drawKart = (ctx: CanvasRenderingContext2D, options: KartRenderOptions): void => {
-  const { x, y, heading, colour, carNumber, alpha, boosting } = options;
+  const { x, y, heading, colour, carNumber, alpha, boosting, worldRotation } = options;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -111,7 +116,7 @@ export const drawKart = (ctx: CanvasRenderingContext2D, options: KartRenderOptio
   ctx.fill();
 
   // Undo the rotation so the number stays upright.
-  ctx.rotate(-heading);
+  ctx.rotate(-heading - worldRotation);
   ctx.font = NUMBER_FONT;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

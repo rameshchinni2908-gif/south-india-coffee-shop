@@ -429,6 +429,7 @@ describe("Kaapi Karts UI", () => {
         position: 2,
         fieldSize: 4,
         boostReady: true,
+        boosting: false,
         standings: [{ carNumber: 7, colourHex: "#6f3219", isSelf: true }],
         offline: false,
       };
@@ -464,6 +465,7 @@ describe("Kaapi Karts UI", () => {
             position={1}
             fieldSize={2}
             boostReady={false}
+            boosting={false}
             standings={[]}
             offline
           />

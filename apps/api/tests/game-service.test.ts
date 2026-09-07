@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   COUNTDOWN_MS,
+  MIN_PLAYERS,
   MAX_PLAYERS,
   PLAYER_ID_PATTERN,
   RACE_CAP_MS,
@@ -278,12 +279,20 @@ describe("game service", () => {
       "PLAYERS_NOT_READY",
     );
 
+    // MIN_PLAYERS is 1, so a lone player may race — deliberate, so the track can
+    // be tested on one phone. If MIN_PLAYERS goes back to 2, a solo start must
+    // be refused instead.
     const solo = gameService.createRoom({});
 
-    expectGameError(
-      () => gameService.startRace(solo.code, solo.playerId, true),
-      "NOT_ENOUGH_PLAYERS",
-    );
+    if (MIN_PLAYERS > 1) {
+      expectGameError(
+        () => gameService.startRace(solo.code, solo.playerId, true),
+        "NOT_ENOUGH_PLAYERS",
+      );
+    } else {
+      gameService.startRace(solo.code, solo.playerId, true);
+      expect(gameService.getState(solo.code).status).toBe("COUNTDOWN");
+    }
 
     gameService.startRace(seated.code, host ?? "", true);
     expect(gameService.getState(seated.code).status).toBe("COUNTDOWN");

@@ -33,6 +33,12 @@ const STEERING_AUTHORITY_SPEED = 8;
 
 /** Keeps a spun-off kart inside the world box. */
 const WORLD_MARGIN = 40;
+/** Barrier distance as a multiple of half-width: the grass shoulder you may use. */
+const BARRIER_SHOULDER = 1.32;
+/** Pulled in by this share of the kart radius so the body, not the centre, stops. */
+const BARRIER_INSET = 0.55;
+/** Speed kept after brushing a barrier. Enough to sting, not enough to stop you. */
+const BARRIER_SPEED_SCRUB = 0.94;
 
 export interface KartState {
   x: number;
@@ -201,8 +207,33 @@ export const stepKart = (
 
   // --- resample the track --------------------------------------------------
   const sample = closestPointOnTrack(context.geometry, x, y, context.sample);
-  const onTrack = isOnTrack(context.geometry, sample.lateralOffset);
-  if (!onTrack && speed > offTrackCap) speed = offTrackCap;
+  let lateralOffset = sample.lateralOffset;
+  let onTrack = isOnTrack(context.geometry, lateralOffset);
+
+  // --- barriers ------------------------------------------------------------
+  // Playtesting said the kart was too easy to lose off the side of the circuit.
+  // The barrier sits a little OUTSIDE the tarmac rather than on its edge, so
+  // there is still a grass shoulder that costs you speed — the mechanic the
+  // how-to-play screen promises — but the kart can no longer leave the track.
+  // It keeps its heading on contact, so it scrapes along the wall and can be
+  // leaned on through a corner instead of stopping dead.
+  const barrier = context.geometry.halfWidth * BARRIER_SHOULDER - KART.radius * BARRIER_INSET;
+
+  if (Math.abs(lateralOffset) > barrier) {
+    const limited = lateralOffset < 0 ? -barrier : barrier;
+    const normalX = -Math.sin(sample.heading);
+    const normalY = Math.cos(sample.heading);
+
+    x = sample.closestX + normalX * limited;
+    y = sample.closestY + normalY * limited;
+    lateralOffset = limited;
+    onTrack = isOnTrack(context.geometry, limited);
+    speed *= BARRIER_SPEED_SCRUB;
+  }
+
+  if (!onTrack && speed > offTrackCap) {
+    speed = offTrackCap;
+  }
 
   // --- boost pads ----------------------------------------------------------
   if (boostCooldownMsRemaining <= 0 && boostMsRemaining <= 0) {
@@ -218,7 +249,7 @@ export const stepKart = (
   result.velocityHeading = velocityHeading;
   result.speed = speed;
   result.distanceAlong = sample.distanceAlong;
-  result.lateralOffset = sample.lateralOffset;
+  result.lateralOffset = lateralOffset;
   result.onTrack = onTrack;
   result.boostMsRemaining = boostMsRemaining;
   result.boostCooldownMsRemaining = boostCooldownMsRemaining;

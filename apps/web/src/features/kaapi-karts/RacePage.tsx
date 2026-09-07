@@ -43,6 +43,7 @@ interface HudSnapshot {
   elapsedMs: number;
   speed: number;
   boostReady: boolean;
+  boosting: boolean;
   position: number;
 }
 
@@ -51,6 +52,7 @@ const INITIAL_HUD: HudSnapshot = {
   elapsedMs: 0,
   speed: 0,
   boostReady: false,
+  boosting: false,
   position: 1,
 };
 
@@ -175,6 +177,7 @@ export const RacePage = () => {
           elapsedMs: next.elapsedMs,
           speed: next.speed,
           boostReady: next.boostReady,
+          boosting: next.boosting,
           position: next.position,
         });
       },
@@ -385,6 +388,7 @@ export const RacePage = () => {
           position={hud.position}
           fieldSize={Math.max(players.length, 1)}
           boostReady={hud.boostReady}
+          boosting={hud.boosting}
           standings={standings}
           offline={socket.connection !== "connected" && socket.connection !== "idle"}
         />

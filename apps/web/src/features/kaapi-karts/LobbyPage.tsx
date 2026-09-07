@@ -244,6 +244,45 @@ export const LobbyPage = () => {
 
           {room && !roomClosed && !membershipError ? (
             <Stack spacing={{ xs: 3, md: 4 }} sx={{ mt: 3 }}>
+              {/* Kept at the top: the host should never have to scroll past the
+                  grid and the pickers to find the one button that starts a race. */}
+              {isHost ? (
+                <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
+                  <Typography component="h2" variant="h5" sx={{ fontWeight: 850 }}>
+                    Host controls
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>
+                    {canStart
+                      ? "Everyone is ready. Lights out whenever you are."
+                      : `Start unlocks once all ${MIN_PLAYERS}+ karts are ready — or force start anyway.`}
+                  </Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2.5 }}>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      startIcon={<SportsScoreOutlinedIcon />}
+                      disabled={!inLobby || !canStart}
+                      onClick={() => socket.startRace(false)}
+                    >
+                      Start race
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      startIcon={<FlagOutlinedIcon />}
+                      disabled={!inLobby || players.length < MIN_PLAYERS}
+                      onClick={() => socket.startRace(true)}
+                    >
+                      Force start
+                    </Button>
+                  </Stack>
+                </Paper>
+              ) : (
+                <Alert severity="info" icon={<SportsScoreOutlinedIcon />}>
+                  Waiting for the host to start the race.
+                </Alert>
+              )}
+
               <RoomCodeShare
                 code={room.code}
                 shareUrl={kaapiKartsInviteUrl(room.code)}
@@ -435,43 +474,6 @@ export const LobbyPage = () => {
                   />
                 </Stack>
               </Paper>
-
-              {isHost ? (
-                <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
-                  <Typography component="h2" variant="h5" sx={{ fontWeight: 850 }}>
-                    Host controls
-                  </Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.75 }}>
-                    {canStart
-                      ? "Everyone is ready. Lights out whenever you are."
-                      : `Start unlocks once all ${MIN_PLAYERS}+ karts are ready — or force start anyway.`}
-                  </Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2.5 }}>
-                    <Button
-                      variant="contained"
-                      size="large"
-                      startIcon={<SportsScoreOutlinedIcon />}
-                      disabled={!inLobby || !canStart}
-                      onClick={() => socket.startRace(false)}
-                    >
-                      Start race
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="large"
-                      startIcon={<FlagOutlinedIcon />}
-                      disabled={!inLobby || players.length < MIN_PLAYERS}
-                      onClick={() => socket.startRace(true)}
-                    >
-                      Force start
-                    </Button>
-                  </Stack>
-                </Paper>
-              ) : (
-                <Alert severity="info" icon={<SportsScoreOutlinedIcon />}>
-                  Waiting for the host to start the race.
-                </Alert>
-              )}
 
               <Box>
                 <Button

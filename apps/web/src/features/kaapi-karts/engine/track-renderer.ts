@@ -37,7 +37,8 @@ const NO_DASH: number[] = [];
 
 const CHEQUER_DEPTH = 22;
 const CHEQUER_COLUMNS = 8;
-const BOOST_PAD_RADIUS = 30;
+/** Widened after playtesting: the pads were easy to miss at speed. */
+const BOOST_PAD_RADIUS = 40;
 
 export interface TrackRenderer {
   draw(ctx: CanvasRenderingContext2D, timeMs: number, reducedMotion: boolean): void;
@@ -101,14 +102,19 @@ const drawBoostPads = (
     ctx.arc(pad.x, pad.y, BOOST_PAD_RADIUS, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Chevron, pointing the way round the lap.
-    ctx.strokeStyle = TRACK_PALETTE.kerbLight;
-    ctx.lineWidth = 5;
+    // A lightning bolt rather than a chevron: the camera turns with the kart, so
+    // any directional arrow drawn in world space ends up pointing somewhere
+    // meaningless on screen. A bolt reads the same at every rotation.
+    ctx.fillStyle = TRACK_PALETTE.kerbLight;
     ctx.beginPath();
-    ctx.moveTo(pad.x - 9, pad.y - 11);
-    ctx.lineTo(pad.x + 7, pad.y);
-    ctx.lineTo(pad.x - 9, pad.y + 11);
-    ctx.stroke();
+    ctx.moveTo(pad.x + 3, pad.y - 15);
+    ctx.lineTo(pad.x - 9, pad.y + 3);
+    ctx.lineTo(pad.x - 1, pad.y + 3);
+    ctx.lineTo(pad.x - 3, pad.y + 15);
+    ctx.lineTo(pad.x + 9, pad.y - 3);
+    ctx.lineTo(pad.x + 1, pad.y - 3);
+    ctx.closePath();
+    ctx.fill();
   }
 };
 

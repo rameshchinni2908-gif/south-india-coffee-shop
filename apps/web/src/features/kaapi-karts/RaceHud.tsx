@@ -29,6 +29,7 @@ interface RaceHudProps {
   position: number;
   fieldSize: number;
   boostReady: boolean;
+  boosting: boolean;
   standings: readonly HudStanding[];
   offline: boolean;
 }
@@ -52,6 +53,7 @@ export const RaceHud = ({
   position,
   fieldSize,
   boostReady,
+  boosting,
   standings,
   offline,
 }: RaceHudProps) => (
@@ -186,15 +188,19 @@ export const RaceHud = ({
       ))}
     </Stack>
 
+    {/* Three states, not two. Playtesting said boosting was unreadable: you
+        could not tell a boost had fired, only that the chip was green. */}
     <Chip
       size="small"
       icon={<BoltOutlinedIcon fontSize="small" />}
-      label={boostReady ? "Boost ready" : "Boost charging"}
+      label={boosting ? "Boosting!" : boostReady ? "Drive over a ⚡ pad" : "Boost charging"}
       sx={{
         alignSelf: "flex-start",
-        fontWeight: 700,
+        fontWeight: 800,
         color: "#fffdf8",
-        bgcolor: boostReady ? "#28734f" : "rgba(30, 15, 9, 0.6)",
+        bgcolor: boosting ? "#b85f16" : boostReady ? "#28734f" : "rgba(30, 15, 9, 0.6)",
+        transform: boosting ? "scale(1.08)" : "none",
+        transition: "background-color 140ms linear, transform 140ms ease",
         "& .MuiChip-icon": { color: "inherit" },
       }}
     />

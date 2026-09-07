@@ -58,6 +58,7 @@ export interface SelfSnapshot {
   progress: number;
   speed: number;
   boostReady: boolean;
+  boosting: boolean;
 }
 
 export interface GhostState {
@@ -75,6 +76,7 @@ export interface RaceHud {
   elapsedMs: number;
   speed: number;
   boostReady: boolean;
+  boosting: boolean;
   position: number;
 }
 
@@ -124,12 +126,23 @@ export const MAX_DEVICE_PIXEL_RATIO = 2;
 export const FRAME_BUDGET_MS = 22;
 const QUALITY_SAMPLE_MS = 1000;
 
-/** Minimum world units the camera keeps in view, so corners arrive readable. */
-const VIEW_WIDTH = 430;
-const VIEW_HEIGHT = 620;
+/**
+ * Minimum world units the camera keeps in view, so corners arrive readable.
+ * Widened after playtesting: the first pass framed the kart too tightly to read
+ * where the next corner went.
+ */
+const VIEW_WIDTH = 560;
+const VIEW_HEIGHT = 810;
 /** Push the camera ahead of the kart, as a share of the visible height. */
 const CAMERA_LOOK_AHEAD = 0.16;
 const CAMERA_FOLLOW_RATE = 9;
+/**
+ * How fast the view swings round to the kart's heading. The camera turns with
+ * the kart so the track always runs away "up" the screen, which is what makes
+ * left mean left: with a fixed camera, steering reads as inverted whenever you
+ * are driving back down the screen.
+ */
+const CAMERA_TURN_RATE = 4.5;
 const GHOST_SMOOTH_RATE = 12;
 
 const HUD_INTERVAL_MS = 100;
@@ -202,6 +215,7 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
     carNumber: options.selfCarNumber,
     alpha: SELF_ALPHA,
     boosting: false,
+    worldRotation: 0,
   };
 
   // --- timing --------------------------------------------------------------
@@ -224,6 +238,7 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
   // --- camera & quality ----------------------------------------------------
   let cameraX = self.x;
   let cameraY = self.y;
+  let cameraHeading = self.heading;
   let cameraReady = false;
   let cssWidth = FALLBACK_CANVAS_WIDTH;
   let cssHeight = FALLBACK_CANVAS_HEIGHT;
@@ -314,31 +329,27 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
 
   const updateCamera = (renderX: number, renderY: number, heading: number, dt: number): void => {
     const scale = Math.min(cssWidth / VIEW_WIDTH, cssHeight / VIEW_HEIGHT);
-    const visibleWidth = cssWidth / scale;
     const visibleHeight = cssHeight / scale;
     const lookAhead = visibleHeight * CAMERA_LOOK_AHEAD;
 
-    let targetX = renderX + Math.cos(heading) * lookAhead;
-    let targetY = renderY + Math.sin(heading) * lookAhead;
+    // The view turns with the kart, so it is never clamped to the track bounds:
+    // a rotated viewport does not map onto an axis-aligned rectangle, and the
+    // kart is always on the ribbon anyway.
+    const targetX = renderX + Math.cos(heading) * lookAhead;
+    const targetY = renderY + Math.sin(heading) * lookAhead;
 
-    targetX =
-      visibleWidth >= track.width
-        ? track.width / 2
-        : clamp(targetX, visibleWidth / 2, track.width - visibleWidth / 2);
-    targetY =
-      visibleHeight >= track.height
-        ? track.height / 2
-        : clamp(targetY, visibleHeight / 2, track.height - visibleHeight / 2);
-
-    if (!cameraReady || options.reducedMotion) {
+    if (!cameraReady) {
       cameraX = targetX;
       cameraY = targetY;
+      cameraHeading = heading;
       cameraReady = true;
       return;
     }
+
     const factor = approachFactor(CAMERA_FOLLOW_RATE, dt);
     cameraX = lerp(cameraX, targetX, factor);
     cameraY = lerp(cameraY, targetY, factor);
+    cameraHeading = angleLerp(cameraHeading, heading, approachFactor(CAMERA_TURN_RATE, dt));
   };
 
   const render = (alpha: number, timeMs: number, dtSeconds: number): void => {
@@ -356,15 +367,17 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
     ctx.fillStyle = TRACK_PALETTE.ground;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const zoom = pixelRatio * scale;
-    ctx.setTransform(
-      zoom,
-      0,
-      0,
-      zoom,
-      pixelRatio * (cssWidth / 2 - cameraX * scale),
-      pixelRatio * (cssHeight / 2 - cameraY * scale),
-    );
+    // Heading 0 points along +x, and the screen's "up" is -y, so turning the
+    // world by this much puts the kart's nose at the top of the canvas.
+    const worldRotation = -cameraHeading - Math.PI / 2;
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.translate(cssWidth / 2, cssHeight / 2);
+    ctx.scale(scale, scale);
+    ctx.rotate(worldRotation);
+    ctx.translate(-cameraX, -cameraY);
+
+    kartDraw.worldRotation = worldRotation;
 
     trackRenderer.draw(ctx, timeMs, options.reducedMotion);
 
@@ -424,6 +437,7 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
     progress: tracker.progress,
     speed: self.speed,
     boostReady: isBoostReady(self),
+    boosting: self.boostMsRemaining > 0,
   });
 
   const emitBroadcast = (perfNow: number): void => {
@@ -441,6 +455,7 @@ export const createRaceEngine = (options: RaceEngineOptions): RaceEngine => {
       elapsedMs: Math.max(elapsedMs, 0),
       speed: self.speed,
       boostReady: isBoostReady(self),
+      boosting: self.boostMsRemaining > 0,
       position: racePosition,
     });
   };

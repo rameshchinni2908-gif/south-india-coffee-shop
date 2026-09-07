@@ -19,7 +19,12 @@ export const GAME_TAGLINE = "Race your table. Last place buys the coffee.";
 // Room rules
 // ---------------------------------------------------------------------------
 
-export const MIN_PLAYERS = 2;
+/**
+ * Solo racing is allowed so the track can be tested on a single phone, and
+ * because a lone player waiting for a friend may as well do a lap. Restore this
+ * to 2 to make the game strictly social again — nothing else needs changing.
+ */
+export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 6;
 
 export const ROOM_CODE_LENGTH = 4;

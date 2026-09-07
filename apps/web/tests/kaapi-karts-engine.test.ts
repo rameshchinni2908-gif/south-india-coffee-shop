@@ -206,11 +206,40 @@ describe("kart physics", () => {
 
     expect(state.onTrack).toBe(false);
     expect(state.speed).toBeCloseTo(KART.maxSpeed * KART.offTrackSpeedFactor, 6);
+  });
 
-    for (let i = 0; i < 60; i += 1) {
-      stepKart(state, input(0), STEP_SECONDS, context, state);
-      expect(state.speed).toBeLessThanOrEqual(KART.maxSpeed * KART.offTrackSpeedFactor + 1e-9);
+  // The barrier is what stops a mistake becoming a lost race. It sits outside
+  // the tarmac, so the grass shoulder above still costs speed, but nothing can
+  // leave the circuit however hard it is driven at the wall.
+  it("never lets a kart past the barrier, even steering hard into it", () => {
+    const context = realContext();
+    const geometry = context.geometry;
+    const limit = geometry.halfWidth * 1.32;
+    const pose = gridStartPose(geometry, 0);
+    const state = createKartState(pose.x, pose.y, pose.heading, gridStartDistance(geometry, 0));
+
+    // Full lock held for ten seconds: the kart spends the whole time trying to
+    // drive straight off the side of the track.
+    for (let i = 0; i < 600; i += 1) {
+      stepKart(state, input(1), STEP_SECONDS, context, state);
+      expect(Math.abs(state.lateralOffset)).toBeLessThanOrEqual(limit + 1e-6);
     }
+
+    expect(Number.isFinite(state.x)).toBe(true);
+    expect(Number.isFinite(state.y)).toBe(true);
+  });
+
+  it("recovers a kart dumped in the infield back toward the circuit", () => {
+    const context = realContext();
+    const limit = context.geometry.halfWidth * 1.32;
+    const state = createKartState(500, 400, 0, 0);
+    state.speed = KART.maxSpeed;
+
+    for (let i = 0; i < 120; i += 1) {
+      stepKart(state, input(0), STEP_SECONDS, context, state);
+    }
+
+    expect(Math.abs(state.lateralOffset)).toBeLessThanOrEqual(limit + 1e-6);
   });
 
   it("steers less at top speed than at low speed", () => {
