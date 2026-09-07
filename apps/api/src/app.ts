@@ -38,6 +38,7 @@ interface CreateAppOptions {
   reportService?: ReportService;
   staffAccountService?: StaffAccountService;
   gameRouter?: Router;
+  arenaRouter?: Router;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -51,6 +52,7 @@ export const createApp = ({
   reportService,
   staffAccountService,
   gameRouter,
+  arenaRouter,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -118,6 +120,12 @@ export const createApp = ({
   // Mounted only when GAME_ENABLED, so the Kaapi Karts module can ship dark.
   if (gameRouter) {
     app.use("/api/game", gameRouter);
+  }
+
+  // The second mini-game, behind the same flag. Independent of the kart module
+  // in every respect except the flag — see BEAN-BLASTERS.md section 3.
+  if (arenaRouter) {
+    app.use("/api/arena", arenaRouter);
   }
 
   app.use(notFoundHandler);
