@@ -9,6 +9,7 @@ import { PageLoading } from "./components/PageLoading.js";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
 import { BEAN_BLASTERS_PATH } from "./features/bean-blasters/arena-paths.js";
+import { BEAN_MERGE_PATH } from "./features/bean-merge/merge-paths.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
@@ -87,6 +88,13 @@ const BeanBlastersRoutes = lazy(async () => {
   return { default: module.BeanBlastersRoutes };
 });
 
+// The third: single-player, no server involved at all.
+const BeanMergeRoutes = lazy(async () => {
+  const module = await import("./features/bean-merge/bean-merge-routes.js");
+
+  return { default: module.BeanMergeRoutes };
+});
+
 export const AppRoutes = () => (
   <CartProvider>
     <RouteErrorBoundary>
@@ -101,6 +109,7 @@ export const AppRoutes = () => (
               {/* More specific than the `/games/*` splat below, so it wins the
                   match regardless of the order these are declared in. */}
               <Route path={`${BEAN_BLASTERS_PATH}/*`} element={<BeanBlastersRoutes />} />
+              <Route path={`${BEAN_MERGE_PATH}/*`} element={<BeanMergeRoutes />} />
               <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
             </>
           ) : null}

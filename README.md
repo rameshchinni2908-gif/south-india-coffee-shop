@@ -335,6 +335,38 @@ curl https://south-india-coffee-shop-api.onrender.com/api/arena/health
   room-code alphabet, the colour palette) are deliberate, so either game can be
   deleted by removing its own folders.
 
+## Bean Merge (solo waiting-room mini-game)
+
+The third game in the hub, and the only one you can play alone. A 4×4
+swipe-and-merge puzzle: equal tiles combine and climb a coffee ladder — seed,
+cherry, green bean, roast, grind, filter, decoction, milk, kaapi, tumbler, and
+finally a **davara**. No timer, no opponent, instant restart, one-step undo.
+
+The other two games need a table of friends and a shared room code; a customer
+waiting alone had nothing to play. This is for them.
+
+The full specification lives in [`BEAN-MERGE.md`](BEAN-MERGE.md).
+
+### It has no backend
+
+This game adds **no API route, no model, no collection, no socket, and no
+environment variable**. It is pure frontend, so it works even with the API
+switched off entirely — `GAME_ENABLED` is irrelevant to it. Only
+`VITE_GAME_ENABLED` controls whether the hub card and route appear.
+
+The only thing it stores is a best score in the browser's `localStorage`. Nothing
+leaves the device, and there is no account, no PII and nothing to clean up.
+
+### Notes
+
+- It is DOM rather than canvas on purpose: that makes it fully keyboard-playable
+  (arrow keys or WASD), and every cell is readable by a screen reader as its row,
+  column and tile name. The a11y suite audits the whole board.
+- Its lazy chunk is held to a tighter **60 KB** budget than the other two, since
+  it has no canvas engine or realtime client to carry.
+- It shares no code with the other games. As with them, deleting it means
+  deleting its folder, its route, its hub card block and its bundle-check entry.
+
 ## Quality checks
 
 ```powershell

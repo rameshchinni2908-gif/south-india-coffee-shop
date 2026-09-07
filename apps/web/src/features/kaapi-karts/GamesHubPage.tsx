@@ -1,3 +1,4 @@
+import Grid4x4OutlinedIcon from "@mui/icons-material/Grid4x4Outlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
 import SportsScoreOutlinedIcon from "@mui/icons-material/SportsScoreOutlined";
@@ -32,6 +33,13 @@ import {
 } from "../bean-blasters/arena-contract.js";
 import { BEAN_BLASTERS_PATH } from "../bean-blasters/arena-paths.js";
 // --- end Bean Blasters card ---
+// --- Bean Merge card ---
+import {
+  GAME_DISPLAY_NAME as MERGE_NAME,
+  GAME_TAGLINE as MERGE_TAGLINE,
+} from "../bean-merge/merge-contract.js";
+import { BEAN_MERGE_PATH } from "../bean-merge/merge-paths.js";
+// --- end Bean Merge card ---
 import { pingGameHealth } from "./game-api.js";
 import { GAME_DISPLAY_NAME, GAME_TAGLINE, MAX_PLAYERS, MIN_PLAYERS } from "./game-contract.js";
 import { KAAPI_KARTS_PATH } from "./game-paths.js";
@@ -213,6 +221,17 @@ export const GamesHubPage = () => {
               reducedMotion={reducedMotion}
             />
             {/* --- end Bean Blasters card --- */}
+            {/* --- Bean Merge card --- */}
+            <GameCard
+              name={MERGE_NAME}
+              tagline={MERGE_TAGLINE}
+              path={BEAN_MERGE_PATH}
+              chips={["1 player", "No timer"]}
+              gradient="linear-gradient(135deg, #28734f 0%, #8a5a1c 55%, #c98a4b 100%)"
+              icon={<Grid4x4OutlinedIcon sx={{ fontSize: 62, opacity: 0.92 }} />}
+              reducedMotion={reducedMotion}
+            />
+            {/* --- end Bean Merge card --- */}
           </Box>
 
           <Typography variant="body2" color="text.secondary" sx={{ mt: 4, maxWidth: 660 }}>

@@ -19,12 +19,13 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ASSETS_DIR = join(process.cwd(), "apps", "web", "dist", "assets");
-const BUDGET_BYTES = 150 * 1024;
+const KB = 1024;
 
 /**
  * One entry per game. `prefixes` are chunk basenames matched before the hash;
  * `marker` is a string that only ever appears in that game's own code, and
- * proves it never reached the eager entry chunk.
+ * proves it never reached the eager entry chunk. Each game has its OWN budget,
+ * so one cannot spend another's headroom.
  *
  * Chunk basenames must be unique ACROSS games — Vite names a chunk after its
  * entry module, so two features with a `LobbyPage.tsx` would be
@@ -33,6 +34,7 @@ const BUDGET_BYTES = 150 * 1024;
 const GAMES = [
   {
     name: "Kaapi Karts",
+    budget: 150 * KB,
     marker: "kaapi-circuit",
     prefixes: [
       "kaapi-karts-routes",
@@ -62,6 +64,7 @@ const GAMES = [
   },
   {
     name: "Bean Blasters",
+    budget: 150 * KB,
     marker: "roastery-floor",
     prefixes: [
       "bean-blasters-routes",
@@ -89,6 +92,25 @@ const GAMES = [
       "arena-renderer",
       "barista-renderer",
       "use-arena-reduced-motion",
+    ],
+  },
+  {
+    name: "Bean Merge",
+    // No canvas, no sockets, no server: it is a fraction of the other two and
+    // a tighter budget is what keeps it that way.
+    budget: 60 * KB,
+    marker: "Davara",
+    prefixes: [
+      "bean-merge-routes",
+      "BeanMergePage",
+      "MergeBoard",
+      "MergeTile",
+      "MergeHowToDialog",
+      "merge-contract",
+      "merge-paths",
+      "merge-preferences",
+      "use-merge-reduced-motion",
+      "grid",
     ],
   },
 ];
@@ -149,10 +171,10 @@ for (const game of GAMES) {
 
   const total = chunks.reduce((sum, chunk) => sum + chunk.bytes, 0);
 
-  console.log(`  lazy chunks: ${formatKb(total)} gzip of ${formatKb(BUDGET_BYTES)}`);
+  console.log(`  lazy chunks: ${formatKb(total)} gzip of ${formatKb(game.budget)}`);
 
-  if (total > BUDGET_BYTES) {
-    console.error(`  Budget exceeded by ${formatKb(total - BUDGET_BYTES)}.`);
+  if (total > game.budget) {
+    console.error(`  Budget exceeded by ${formatKb(total - game.budget)}.`);
     failed = true;
   }
 
@@ -171,4 +193,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log("\nBoth games are within budget and neither reached the entry chunk.");
+console.log("\nEvery game is within its budget and none reached the entry chunk.");

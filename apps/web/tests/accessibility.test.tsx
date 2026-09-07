@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../src/App.js";
 import { STORAGE_SEEN_HOW_TO } from "../src/features/bean-blasters/arena-contract.js";
 import { BeanBlastersStartPage } from "../src/features/bean-blasters/BeanBlastersStartPage.js";
+import { BeanMergePage } from "../src/features/bean-merge/BeanMergePage.js";
+import { STORAGE_SEEN_HOW_TO as MERGE_SEEN_HOW_TO } from "../src/features/bean-merge/merge-contract.js";
 import { CartProvider } from "../src/features/cart/CartProvider.js";
 import { theme } from "../src/theme.js";
 
@@ -265,6 +267,34 @@ describe("automated accessibility checks", () => {
       );
 
       await screen.findByRole("heading", { name: "Create a room" });
+      await expectNoAutomatedViolations(container);
+    });
+  });
+
+  /**
+   * Bean Merge is DOM rather than canvas precisely so it can be audited and
+   * played without sight, so it is held to the whole board being clean.
+   */
+  describe("Bean Merge", () => {
+    it("finds no detectable violations on the board", async () => {
+      window.localStorage.setItem(MERGE_SEEN_HOW_TO, "true");
+
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+      });
+      const { container } = render(
+        <ThemeProvider theme={theme}>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={["/games/bean-merge"]}>
+              <CartProvider>
+                <BeanMergePage />
+              </CartProvider>
+            </MemoryRouter>
+          </QueryClientProvider>
+        </ThemeProvider>,
+      );
+
+      await screen.findByRole("grid", { name: "Bean Merge board" });
       await expectNoAutomatedViolations(container);
     });
   });
