@@ -335,6 +335,64 @@ curl https://south-india-coffee-shop-api.onrender.com/api/arena/health
   room-code alphabet, the colour palette) are deliberate, so either game can be
   deleted by removing its own folders.
 
+## Secret Sip (social deduction at your table)
+
+Play at <https://jrgsouthindiacoffeeshop.vercel.app/games/secret-sip>.
+Three to eight friends use their own phones to join a five-character private
+table code. Each player gets a numbered cup; no name or account is needed.
+Regulars receive the same secret word, while one bluffer sees only its category.
+Give short clues aloud, discuss who sounds suspicious, then vote privately.
+A caught bluffer gets one final guess to steal the win. A tie or a wrong
+accusation lets the bluffer escape. Escaping earns the bluffer three points;
+catching them without a correct final guess earns each regular two points.
+Scores carry across rematches at the same table, with fresh words and a different
+bluffer each round. No prizes, orders, or payments are involved.
+
+The server controls roles, turns, deadlines, votes, answers, and scores. The
+48-word deck stays on the API; it is never bundled into the browser. Private
+snapshots contain only the requesting player's role and permitted word. Random
+256-bit session tokens authorize sockets and never appear in room links, public
+player lists, or other players' snapshots. A token is kept in session storage
+for refresh/reconnect, with an in-memory fallback when storage is unavailable.
+Use the original browser tab to recover a seat. If storage is blocked, reloading
+loses the seat; the host can release disconnected lobby seats. Private cards
+hide after five seconds and whenever the page loses focus.
+
+Rounds have a 12-second role reveal, 12 seconds per spoken clue, 35 seconds of
+discussion, 25 seconds to vote, and a 15-second final guess when needed. Timers
+advance missing players automatically. The host can end discussion early, and
+the current speaker can finish their clue early. Votes are final and hidden
+until results. Guess matching ignores punctuation, case, and spaces and accepts
+the server deck's common aliases; it does not use fuzzy spelling or translation.
+Clues are spoken in person, in whichever language the table prefers; the interface
+and word cards are English. There is no microphone permission or recording.
+
+Deployment uses the **existing** `GAME_ENABLED`, `VITE_GAME_ENABLED`,
+`VITE_GAME_SOCKET_URL`, `CLIENT_URL`, `GAME_ROOM_TTL_MINUTES`, and
+`GAME_MAX_ROOMS_PER_IP_PER_HOUR` values. No dependency, paid service, Atlas
+collection, or new environment variable is required. REST creation/join uses
+`POST /api/sip/rooms` and `POST /api/sip/rooms/:code/join`, both with `{}` bodies.
+Readiness is `GET /api/sip/health`. Live traffic uses the dedicated
+`/sip-socket.io` path on the existing Render API, bypassing the Vercel REST proxy
+just like the other multiplayer games. The namespace is the default `/`.
+
+Rooms and scores are ephemeral, capped at 500 rooms, and expire after the
+configured room TTL measured from creation. They disappear on a Render restart
+or redeploy. The start screen wakes the API and reports cold-start failures with
+a retry action. Disconnected players keep their roles within the room lifetime;
+hosting moves to a connected player. Rematches preserve disconnected seats so
+a refreshing phone can recover; the host can explicitly release an absent seat.
+The feature is lazy loaded; CI checks its own JavaScript and CSS against a
+60 kB gzip budget (shared React, MUI, and Socket.IO chunks are separate).
+Disable the existing game flags to hide all games, or roll back both hosting
+deployments to recover the previous release.
+
+Implementation: `apps/api/src/modules/secret-sip/` and
+`apps/web/src/features/secret-sip/`. Keep both `sip-contract.ts` files identical;
+an automated test enforces this. Service, HTTP, three-client Socket.IO, and UI
+tests cover private projections, access control, turn order, vote locking, ties,
+timeouts, score calculation, rematches, reconnects, and accessible forms.
+
 ## Bean Merge (solo waiting-room mini-game)
 
 The third game in the hub, and the only one you can play alone. A 4×4

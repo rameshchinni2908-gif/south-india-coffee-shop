@@ -33,6 +33,12 @@ const KB = 1024;
  */
 const GAMES = [
   {
+    name: "Secret Sip",
+    budget: 60 * KB,
+    marker: "Good coffee. Questionable alibis.",
+    prefixes: ["SecretSipPage", "sip-contract", "sip-api", "use-sip-room"],
+  },
+  {
     name: "Kaapi Karts",
     budget: 150 * KB,
     marker: "kaapi-circuit",
@@ -149,7 +155,8 @@ const jsFiles = files.filter((file) => file.endsWith(".js"));
 const entryChunks = jsFiles.filter((file) => file.startsWith("index-"));
 
 for (const game of GAMES) {
-  const chunks = jsFiles
+  const chunks = files
+    .filter((file) => file.endsWith(".js") || file.endsWith(".css"))
     .filter((file) => game.prefixes.some((prefix) => file.startsWith(`${prefix}-`)))
     .map((file) => ({ file, bytes: gzipSize(join(ASSETS_DIR, file)) }))
     .sort((a, b) => b.bytes - a.bytes);

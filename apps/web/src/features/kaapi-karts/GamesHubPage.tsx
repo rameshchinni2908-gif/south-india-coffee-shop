@@ -1,4 +1,5 @@
 import Grid4x4OutlinedIcon from "@mui/icons-material/Grid4x4Outlined";
+import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
 import SportsScoreOutlinedIcon from "@mui/icons-material/SportsScoreOutlined";
@@ -41,6 +42,7 @@ import {
 import { BEAN_MERGE_PATH } from "../bean-merge/merge-paths.js";
 // --- end Bean Merge card ---
 import { pingGameHealth } from "./game-api.js";
+import { SIP_NAME, SIP_PATH } from "../secret-sip/sip-contract.js";
 import { GAME_DISPLAY_NAME, GAME_TAGLINE, MAX_PLAYERS, MIN_PLAYERS } from "./game-contract.js";
 import { KAAPI_KARTS_PATH } from "./game-paths.js";
 import { useReducedMotion } from "./use-reduced-motion.js";
@@ -201,6 +203,15 @@ export const GamesHubPage = () => {
               gap: { xs: 2, sm: 2.5 },
             }}
           >
+            <GameCard
+              name={SIP_NAME}
+              tagline="One friend is bluffing. Peek at your secret role, give a clue, and catch them before they steal the win."
+              path={SIP_PATH}
+              chips={["New · 3–8 friends", "About 3 minutes"]}
+              gradient="linear-gradient(135deg, #153e39 0%, #286456 60%, #b6432c 100%)"
+              icon={<PsychologyOutlinedIcon sx={{ fontSize: 68, opacity: 0.95 }} />}
+              reducedMotion={reducedMotion}
+            />
             <GameCard
               name={GAME_DISPLAY_NAME}
               tagline={GAME_TAGLINE}

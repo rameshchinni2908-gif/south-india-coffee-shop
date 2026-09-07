@@ -95,6 +95,11 @@ const BeanMergeRoutes = lazy(async () => {
   return { default: module.BeanMergeRoutes };
 });
 
+const SecretSipRoutes = lazy(async () => {
+  const module = await import("./features/secret-sip/SecretSipPage.js");
+  return { default: module.SecretSipRoutes };
+});
+
 export const AppRoutes = () => (
   <CartProvider>
     <RouteErrorBoundary>
@@ -110,6 +115,7 @@ export const AppRoutes = () => (
                   match regardless of the order these are declared in. */}
               <Route path={`${BEAN_BLASTERS_PATH}/*`} element={<BeanBlastersRoutes />} />
               <Route path={`${BEAN_MERGE_PATH}/*`} element={<BeanMergeRoutes />} />
+              <Route path="/games/secret-sip/*" element={<SecretSipRoutes />} />
               <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
             </>
           ) : null}

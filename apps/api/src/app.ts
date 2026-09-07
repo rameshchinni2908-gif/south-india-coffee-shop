@@ -39,6 +39,7 @@ interface CreateAppOptions {
   staffAccountService?: StaffAccountService;
   gameRouter?: Router;
   arenaRouter?: Router;
+  sipRouter?: Router;
   databaseState?: () => DatabaseState;
   enableRequestLogging?: boolean;
 }
@@ -53,6 +54,7 @@ export const createApp = ({
   staffAccountService,
   gameRouter,
   arenaRouter,
+  sipRouter,
   databaseState = getDatabaseState,
   enableRequestLogging = true,
 }: CreateAppOptions): Express => {
@@ -126,6 +128,10 @@ export const createApp = ({
   // in every respect except the flag — see BEAN-BLASTERS.md section 3.
   if (arenaRouter) {
     app.use("/api/arena", arenaRouter);
+  }
+
+  if (sipRouter) {
+    app.use("/api/sip", sipRouter);
   }
 
   app.use(notFoundHandler);

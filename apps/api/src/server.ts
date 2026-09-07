@@ -7,6 +7,7 @@ import pino from "pino";
 import { createApp } from "./app.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
+import { createSipModule } from "./modules/secret-sip/index.js";
 import {
   createArenaModule,
   MongooseArenaResultRepository,
@@ -91,6 +92,13 @@ const startServer = async (): Promise<void> => {
         resultRepository: new MongooseArenaResultRepository(),
       })
     : null;
+  const sipModule = environment.GAME_ENABLED
+    ? createSipModule({
+        clientUrl: environment.CLIENT_URL,
+        roomTtlMinutes: environment.GAME_ROOM_TTL_MINUTES,
+        maxRoomsPerIpPerHour: environment.GAME_MAX_ROOMS_PER_IP_PER_HOUR,
+      })
+    : null;
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -101,6 +109,7 @@ const startServer = async (): Promise<void> => {
     staffAccountService,
     ...(gameModule ? { gameRouter: gameModule.router } : {}),
     ...(arenaModule ? { arenaRouter: arenaModule.router } : {}),
+    ...(sipModule ? { sipRouter: sipModule.router } : {}),
   });
   const server = app.listen(environment.PORT, () => {
     logger.info({ port: environment.PORT }, "API server listening");
@@ -118,6 +127,8 @@ const startServer = async (): Promise<void> => {
     logger.info("Bean Blasters game module enabled");
   }
 
+  sipModule?.attachSocket(server);
+
   let isShuttingDown = false;
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
@@ -129,6 +140,7 @@ const startServer = async (): Promise<void> => {
     logger.info({ signal }, "Shutting down API server");
 
     try {
+      await sipModule?.shutdown();
       if (gameModule) {
         await gameModule.shutdown();
       }
