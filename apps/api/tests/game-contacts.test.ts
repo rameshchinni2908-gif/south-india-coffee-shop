@@ -21,6 +21,7 @@ const player = (
   emoji: null,
   isReady: true,
   isConnected: true,
+  connectionId: `socket-${carNumber}`,
   isHost: carNumber === 1,
   joinedAt: new Date(0),
   finishMs: null,

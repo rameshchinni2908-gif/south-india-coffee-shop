@@ -118,6 +118,91 @@ describe("game service", () => {
     return seated;
   };
 
+  /**
+   * Navigating between screens tears down one socket and opens another, and the
+   * two events can reach the server in either order. If a late disconnect from
+   * the socket the player has already left can still un-seat them, the lobby
+   * shows live players as offline and the host can no longer start — which is
+   * what "the rematch sometimes does nothing" actually looks like.
+   */
+  it("ignores a late disconnect from a socket the player has already replaced", () => {
+    const seated = seatPlayers(2);
+    const playerId = seated.playerIds[1] ?? "";
+
+    gameService.setReady(seated.code, playerId, true);
+
+    // The new screen's socket lands before the old screen's disconnect arrives.
+    gameService.attach(seated.code, playerId, "socket-new");
+    gameService.disconnect(seated.code, playerId, "socket-old");
+
+    const player = gameService
+      .getState(seated.code)
+      .players.find((candidate) => candidate.playerId === playerId);
+
+    expect(player?.isConnected).toBe(true);
+    expect(player?.isReady).toBe(true);
+  });
+
+  it("still disconnects when the current socket is the one that dropped", () => {
+    const seated = seatPlayers(2);
+    const playerId = seated.playerIds[1] ?? "";
+
+    gameService.attach(seated.code, playerId, "socket-a");
+    gameService.disconnect(seated.code, playerId, "socket-a");
+
+    const player = gameService
+      .getState(seated.code)
+      .players.find((candidate) => candidate.playerId === playerId);
+
+    expect(player?.isConnected).toBe(false);
+  });
+
+  /**
+   * A phone that locks never sends `room:leave`, so before this the badge stayed
+   * with a player who was gone and nobody could ever start the rematch.
+   */
+  it("hands the host badge to someone present when the host drops", () => {
+    const seated = seatPlayers(3);
+    const [host, second] = seated.playerIds as [string, string];
+
+    gameService.disconnect(seated.code, host);
+
+    const state = gameService.getState(seated.code);
+
+    expect(state.hostPlayerId).toBe(second);
+    expect(state.players.find((p) => p.playerId === second)?.isHost).toBe(true);
+    // The original keeps their seat, just not the badge.
+    expect(state.players.find((p) => p.playerId === host)?.isHost).toBe(false);
+    expect(state.players).toHaveLength(3);
+  });
+
+  it("lets the new host start a rematch after the old one drops", () => {
+    const racing = startRacing(2);
+    const [host, second] = racing.playerIds as [string, string];
+
+    for (const playerId of racing.playerIds) {
+      gameService.recordFinish(racing.code, playerId, cleanFinish(110_000));
+    }
+
+    vi.advanceTimersByTime(RACE_CAP_MS);
+    expect(gameService.getState(racing.code).status).toBe("RESULTS");
+
+    gameService.disconnect(racing.code, host);
+    gameService.rematch(racing.code, second);
+
+    expect(gameService.getState(racing.code).status).toBe("LOBBY");
+  });
+
+  it("keeps the badge when the host is the only one connected", () => {
+    const seated = seatPlayers(2);
+    const [host, second] = seated.playerIds as [string, string];
+
+    gameService.disconnect(seated.code, second);
+    gameService.disconnect(seated.code, host);
+
+    expect(gameService.getState(seated.code).hostPlayerId).toBe(host);
+  });
+
   it("creates rooms with unique codes and an opaque host identity", () => {
     const codes = new Set<string>();
 

@@ -91,8 +91,10 @@ export interface ArenaService {
   join(code: string, input: JoinArenaRoomInput): JoinedArenaRoom;
   getState(code: string): ArenaRoomState;
   getResult(code: string): Promise<ArenaResult>;
-  attach(code: string, playerId: string): ArenaRoomState;
-  disconnect(code: string, playerId: string): void;
+  /** `connectionId` is the socket claiming the seat; see ArenaRoomPlayer.connectionId. */
+  attach(code: string, playerId: string, connectionId?: string): ArenaRoomState;
+  /** Ignored when `connectionId` names a socket this seat has already replaced. */
+  disconnect(code: string, playerId: string, connectionId?: string): void;
   leave(code: string, playerId: string): void;
   setReady(code: string, playerId: string, isReady: boolean): void;
   setBadge(code: string, playerId: string, input: SetBadgePayload): void;
@@ -268,6 +270,34 @@ export const createArenaService = ({
     }
 
     return player;
+  };
+
+  /**
+   * Moves the host badge off a player who has gone away.
+   *
+   * Only the host can start a round or a rematch, and a phone that locks or a
+   * tab that closes never sends `room:leave` — so without this the badge stays
+   * with someone who is not there and the rest of the table sits on "waiting for
+   * the host" until the room's TTL sweeps it. The seat itself is untouched: they
+   * can come back and keep playing, just not as host.
+   */
+  const handOverHostIfAway = (room: ArenaRoomRecord, player: ArenaRoomPlayer): void => {
+    if (!player.isHost) {
+      return;
+    }
+
+    const successor = room.players.find(
+      (candidate) => candidate.isConnected && candidate.playerId !== player.playerId,
+    );
+
+    // Nobody else is here to take it, so the badge waits for them to return.
+    if (!successor) {
+      return;
+    }
+
+    player.isHost = false;
+    successor.isHost = true;
+    room.hostPlayerId = successor.playerId;
   };
 
   const requireHost = (room: ArenaRoomRecord, playerId: string): ArenaRoomPlayer => {
@@ -657,6 +687,7 @@ export const createArenaService = ({
       emoji: null,
       isReady: false,
       isConnected: false,
+      connectionId: null,
       isHost: options.isHost,
       joinedAt,
       hearts: HEALTH.startHearts,
@@ -782,11 +813,12 @@ export const createArenaService = ({
       return result;
     },
 
-    attach(code, playerId) {
+    attach(code, playerId, connectionId) {
       const room = requireRoom(code);
       const player = requirePlayer(room, playerId);
 
       player.isConnected = true;
+      player.connectionId = connectionId ?? null;
       publishState(room);
 
       if (room.status === "BATTLE") {
@@ -796,7 +828,7 @@ export const createArenaService = ({
       return toRoomState(room, now());
     },
 
-    disconnect(code, playerId) {
+    disconnect(code, playerId, connectionId) {
       const room = roomStore.get(code);
 
       if (!room) {
@@ -809,10 +841,24 @@ export const createArenaService = ({
         return;
       }
 
+      // A disconnect from a socket this seat has already replaced is stale: the
+      // player changed screens and the old socket's teardown simply arrived
+      // late. Acting on it would mark a live player offline and wipe their
+      // ready state, which is what made rematches intermittently unstartable.
+      if (
+        connectionId !== undefined &&
+        player.connectionId !== null &&
+        player.connectionId !== connectionId
+      ) {
+        return;
+      }
+
       // The slot survives and the barista keeps standing there: it stops moving
       // and stops firing, but stays a valid target until the whistle (§5).
       player.isConnected = false;
+      player.connectionId = null;
       player.isReady = false;
+      handOverHostIfAway(room, player);
       publishState(room);
     },
 

@@ -100,7 +100,7 @@ export const createGameSocket = ({
       }
 
       try {
-        const state = gameService.attach(parsed.data.code, parsed.data.playerId);
+        const state = gameService.attach(parsed.data.code, parsed.data.playerId, socket.id);
 
         socket.data.code = parsed.data.code;
         socket.data.playerId = parsed.data.playerId;
@@ -242,7 +242,9 @@ export const createGameSocket = ({
       const { code, playerId } = socket.data;
 
       if (code && playerId) {
-        gameService.disconnect(code, playerId);
+        // Named, so a teardown that arrives after the player's next socket has
+        // already claimed the seat is recognised as stale and ignored.
+        gameService.disconnect(code, playerId, socket.id);
       }
     });
   };

@@ -104,7 +104,7 @@ export const createArenaSocket = ({
       }
 
       try {
-        const state = arenaService.attach(parsed.data.code, parsed.data.playerId);
+        const state = arenaService.attach(parsed.data.code, parsed.data.playerId, socket.id);
 
         socket.data.code = parsed.data.code;
         socket.data.playerId = parsed.data.playerId;
@@ -245,7 +245,9 @@ export const createArenaSocket = ({
       const { code, playerId } = socket.data;
 
       if (code && playerId) {
-        arenaService.disconnect(code, playerId);
+        // Named, so a teardown that arrives after the player's next socket has
+        // already claimed the seat is recognised as stale and ignored.
+        arenaService.disconnect(code, playerId, socket.id);
       }
     });
   };

@@ -26,6 +26,15 @@ export interface RoomPlayer {
   isConnected: boolean;
   isHost: boolean;
   joinedAt: Date;
+  /**
+   * Which socket currently owns this seat, or null when nothing is attached.
+   *
+   * Changing screens opens a new socket before the old one's disconnect has
+   * necessarily reached the server, and both events name the same player.
+   * Without this, a late disconnect from the abandoned socket un-seats a player
+   * who is very much still here.
+   */
+  connectionId: string | null;
   /** Milliseconds from lights-out, or null while still driving. */
   finishMs: number | null;
   /** Fractional laps travelled, from the last accepted position broadcast. */
