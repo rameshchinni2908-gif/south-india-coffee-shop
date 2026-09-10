@@ -2,6 +2,45 @@
 
 Monorepo for the JRG South Indian Coffee Shop application.
 
+For a small, guided introduction to AI agents using this app's protected admin
+report, start with [the admin briefing agent lesson](apps/api/examples/admin-agent/README.md).
+The terminal lesson remains available. Admins can also use the **Shop assistant**
+card on the dashboard after configuring the API as described below.
+
+## Shop assistant
+
+Sign in as an `ADMIN`, open the dashboard, and select **Generate briefing** in
+the Shop assistant card. You can edit the question to ask about today's orders,
+completed sales, or low stock. Each question starts a fresh run; there is no chat
+memory. Compare suggestions with the dashboard before acting on them.
+
+Configure these variables on the **Render API service only**, then deploy:
+
+```text
+OPENAI_API_KEY=<your OpenAI API key>
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Use the model configured in your terminal lesson if you have changed it. Never
+put the key in a `VITE_*` variable or a frontend file. The deployed assistant uses
+the signed-in admin's existing session; it does not need a saved shop password.
+An empty key disables the assistant while the rest of the app remains available.
+Remove the key and redeploy to disable it again.
+
+The browser calls `GET /api/admin/agent/status` to check availability and
+`POST /api/admin/agent/brief` with `{ "question": "How is the shop doing today?" }`
+to generate a briefing. Only active admins can use these routes. The backend
+reuses the lesson's agent loop and reads the report service directly. It sends
+only the permitted daily totals and low-stock fields to OpenAI; customer details,
+staff identities, passwords, and database credentials are excluded. The report's
+generation time is included so the answer can be checked against its snapshot.
+
+Generation runs only when requested, with no automatic retry. A run makes at
+most two model requests and one report-tool call. The API permits five attempts
+per admin per 15 minutes and one active briefing per process. These controls
+reset when the service restarts and are not a monthly spending cap. OpenAI API
+credits are required. The assistant has no tools to change shop records.
+
 ## Prerequisites
 
 - Git

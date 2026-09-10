@@ -7,6 +7,7 @@ import { pinoHttp } from "pino-http";
 import { getDatabaseState, type DatabaseState } from "./config/database.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found-handler.js";
+import { createAdminAgentRouter } from "./routes/admin-agent-routes.js";
 import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
 import { createAdminOrderRouter } from "./routes/admin-order-routes.js";
 import { createAdminProductRouter } from "./routes/admin-product-routes.js";
@@ -18,6 +19,7 @@ import { createHealthRouter } from "./routes/health-routes.js";
 import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
 import type { AuthService } from "./services/auth-service.js";
+import type { AdminAgentService } from "./services/admin-agent-service.js";
 import type { CategoryService } from "./services/category-service.js";
 import type { ProductService } from "./services/product-service.js";
 import type { OrderService } from "./services/order-service.js";
@@ -36,6 +38,7 @@ interface CreateAppOptions {
   catalogServices?: CatalogServices;
   orderService?: OrderService;
   reportService?: ReportService;
+  adminAgentService?: AdminAgentService;
   staffAccountService?: StaffAccountService;
   gameRouter?: Router;
   arenaRouter?: Router;
@@ -51,6 +54,7 @@ export const createApp = ({
   catalogServices,
   orderService,
   reportService,
+  adminAgentService,
   staffAccountService,
   gameRouter,
   arenaRouter,
@@ -117,6 +121,10 @@ export const createApp = ({
 
   if (reportService) {
     app.use("/api/admin/reports", createAdminReportRouter(authService, reportService));
+  }
+
+  if (adminAgentService) {
+    app.use("/api/admin/agent", createAdminAgentRouter(authService, adminAgentService, clientUrl));
   }
 
   // Mounted only when GAME_ENABLED, so the Kaapi Karts module can ship dark.

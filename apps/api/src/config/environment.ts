@@ -41,6 +41,12 @@ const environmentSchema = z.object({
     }, "SHOP_TIMEZONE must be a valid IANA timezone")
     .default("Asia/Kolkata"),
   TAX_PERCENTAGE: z.coerce.number().min(0).max(100).default(0),
+  OPENAI_API_KEY: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined),
+  OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.4-mini"),
   GAME_ENABLED: z
     .enum(["true", "false"])
     .default("false")

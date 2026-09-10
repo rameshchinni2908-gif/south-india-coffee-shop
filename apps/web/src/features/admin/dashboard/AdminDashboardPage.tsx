@@ -27,9 +27,10 @@ import {
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 
 import { formatRupees } from "../../../lib/currency.js";
+import type { StaffUser } from "../../../types/auth.js";
 import { formatShopDateTime } from "../../orders/order-format.js";
 import {
   ORDER_STATUSES,
@@ -37,6 +38,7 @@ import {
   type OrderStatus,
 } from "../../orders/order-status.js";
 import { dashboardQuery } from "./dashboard-query.js";
+import { ShopAssistantCard } from "./ShopAssistantCard.js";
 
 const MetricCard = ({
   label,
@@ -117,6 +119,7 @@ const DashboardLoading = () => (
 );
 
 export const AdminDashboardPage = () => {
+  const { user } = useOutletContext<{ user: StaffUser }>();
   const summaryQuery = useQuery(dashboardQuery);
   const summary = summaryQuery.data;
 
@@ -197,6 +200,8 @@ export const AdminDashboardPage = () => {
                 icon={<Inventory2OutlinedIcon />}
               />
             </Box>
+
+            {user.role === "ADMIN" && <ShopAssistantCard key={user.id} />}
 
             <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
               <Stack

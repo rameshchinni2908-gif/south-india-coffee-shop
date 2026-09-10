@@ -18,7 +18,39 @@ describe("loadEnvironment", () => {
       CLIENT_URL: "http://localhost:5173",
       SHOP_TIMEZONE: "Asia/Kolkata",
       TAX_PERCENTAGE: 0,
+      OPENAI_MODEL: "gpt-5.4-mini",
     });
+  });
+
+  it.each([undefined, "", "   "])("allows an unconfigured assistant key (%s)", (apiKey) => {
+    const environment = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+      ...(apiKey === undefined ? {} : { OPENAI_API_KEY: apiKey }),
+    });
+    expect(environment.OPENAI_API_KEY).toBeUndefined();
+  });
+
+  it("accepts a configured assistant key and preserves the selected model", () => {
+    const environment = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+      OPENAI_API_KEY: " test-key ",
+      OPENAI_MODEL: " gpt-5.4-nano ",
+    });
+    expect(environment.OPENAI_API_KEY).toBe("test-key");
+    expect(environment.OPENAI_MODEL).toBe("gpt-5.4-nano");
+  });
+
+  it("rejects a blank assistant model without leaking the configured key", () => {
+    expect(() =>
+      loadEnvironment({
+        MONGODB_URI: "mongodb://localhost:27017/test",
+        JWT_SECRET: VALID_JWT_SECRET,
+        OPENAI_API_KEY: "private-key-never-print",
+        OPENAI_MODEL: " ",
+      }),
+    ).toThrow(/^Invalid environment configuration: OPENAI_MODEL:/);
   });
 
   it("parses configured MongoDB DNS servers", () => {

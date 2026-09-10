@@ -124,6 +124,30 @@ describe("admin dashboard", () => {
     expect(screen.getByText("2 left")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Recent price history" })).toBeInTheDocument();
     expect(screen.getByText("Admin User")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Shop assistant" })).not.toBeInTheDocument();
+  });
+
+  it("makes the shop assistant available to an administrator", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation((input) => {
+        const url = String(input);
+        if (url.endsWith("/api/auth/me")) {
+          return Promise.resolve(apiResponse({ user: { ...staffUser, role: "ADMIN" } }));
+        }
+        if (url.endsWith("/api/admin/reports/summary")) {
+          return Promise.resolve(apiResponse({ summary }));
+        }
+        if (url.endsWith("/api/admin/agent/status")) {
+          return Promise.resolve(apiResponse({ agent: { enabled: true } }));
+        }
+        return Promise.reject(new Error(`Unexpected request: ${url}`));
+      }),
+    );
+    renderDashboard();
+
+    expect(await screen.findByRole("heading", { name: "Shop assistant" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Generate briefing" })).toBeEnabled();
   });
 
   it("renders a retryable error state when the summary request fails", async () => {

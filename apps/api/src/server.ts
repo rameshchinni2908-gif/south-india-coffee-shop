@@ -5,6 +5,7 @@ import type { Server } from "node:http";
 import pino from "pino";
 
 import { createApp } from "./app.js";
+import { createOpenAiResponder } from "./agents/openai-responses.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
 import { createSipModule } from "./modules/secret-sip/index.js";
@@ -24,6 +25,7 @@ import { MongooseProductRepository } from "./repositories/product-repository.js"
 import { MongooseReportRepository } from "./repositories/report-repository.js";
 import { MongooseUserRepository } from "./repositories/user-repository.js";
 import { createAuthService } from "./services/auth-service.js";
+import { createAdminAgentService } from "./services/admin-agent-service.js";
 import { createCategoryService } from "./services/category-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
@@ -72,6 +74,17 @@ const startServer = async (): Promise<void> => {
     timezone: environment.SHOP_TIMEZONE,
   });
   const staffAccountService = createStaffAccountService(userRepository);
+  const adminAgentService = createAdminAgentService({
+    reportService,
+    ...(environment.OPENAI_API_KEY
+      ? {
+          respond: createOpenAiResponder({
+            apiKey: environment.OPENAI_API_KEY,
+            model: environment.OPENAI_MODEL,
+          }),
+        }
+      : {}),
+  });
   const gameModule: GameModule | null = environment.GAME_ENABLED
     ? createGameModule({
         clientUrl: environment.CLIENT_URL,
@@ -107,6 +120,7 @@ const startServer = async (): Promise<void> => {
     orderService,
     reportService,
     staffAccountService,
+    adminAgentService,
     ...(gameModule ? { gameRouter: gameModule.router } : {}),
     ...(arenaModule ? { arenaRouter: arenaModule.router } : {}),
     ...(sipModule ? { sipRouter: sipModule.router } : {}),

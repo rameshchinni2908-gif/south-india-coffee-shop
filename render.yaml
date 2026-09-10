@@ -30,6 +30,11 @@ services:
         value: Asia/Kolkata
       - key: TAX_PERCENTAGE
         value: 0
+      # Optional admin briefing assistant. Keep the API key on Render only.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
       # Kaapi Karts mini-game. Flip GAME_ENABLED in the Render dashboard to
       # release it; the socket server only starts when it is true.
       - key: GAME_ENABLED
