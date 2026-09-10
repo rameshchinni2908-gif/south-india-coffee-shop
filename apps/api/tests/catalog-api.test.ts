@@ -154,6 +154,26 @@ describe("catalog API", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("accepts an explicit all-availability filter on the public menu", async () => {
+    const testApp = createCatalogApp();
+    const response = await request(testApp.app).get("/api/products?available=all");
+
+    expect(response.status).toBe(200);
+    expect(testApp.getPublicQuery()).toMatchObject({ available: "all" });
+  });
+
+  it.each(["", "unknown", "TRUE", "1"])(
+    "rejects invalid public availability value %j before calling the service",
+    async (available) => {
+      const testApp = createCatalogApp();
+      const response = await request(testApp.app).get("/api/products").query({ available });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(testApp.getPublicQuery()).toBeNull();
+    },
+  );
+
   it("requires staff authentication on admin catalog routes", async () => {
     const { app } = createCatalogApp();
     const response = await request(app).get("/api/admin/products");

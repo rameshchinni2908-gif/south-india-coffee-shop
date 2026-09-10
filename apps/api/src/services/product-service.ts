@@ -144,12 +144,15 @@ export const createProductService = (
       page: query.page,
       limit: query.limit,
       categoryIds,
-      availability: query.available ?? true,
       isActive: true,
       isArchived: false,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
     };
+
+    if (query.available !== "all") {
+      filters.availability = query.available ?? true;
+    }
 
     if (query.search !== undefined) {
       filters.search = query.search;

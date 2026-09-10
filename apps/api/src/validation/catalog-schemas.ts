@@ -21,7 +21,7 @@ export const publicProductQuerySchema = z
     ...paginationFields,
     search: z.string().trim().min(1).max(100).optional(),
     category: slugSchema.optional(),
-    available: queryBooleanSchema.optional(),
+    available: z.union([queryBooleanSchema, z.literal("all")]).optional(),
     vegetarian: queryBooleanSchema.optional(),
     sortBy: z.enum(["name", "createdAt", "updatedAt"]).default("name"),
     sortOrder: z.enum(["asc", "desc"]).default("asc"),

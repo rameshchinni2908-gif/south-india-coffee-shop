@@ -192,6 +192,90 @@ describe("product service", () => {
     });
   });
 
+  it.each([undefined, true, false])(
+    "preserves the existing public availability filter for %j",
+    async (available) => {
+      const productRepository = new FakeProductRepository();
+      const service = createProductService(productRepository, new FakeCategoryRepository());
+
+      await service.listPublic({
+        page: 1,
+        limit: 20,
+        ...(available === undefined ? {} : { available }),
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+
+      expect(productRepository.lastListFilters?.availability).toBe(available ?? true);
+    },
+  );
+
+  it("includes sold-out variants while retaining active-category and product visibility restrictions", async () => {
+    const productRepository = new FakeProductRepository();
+    productRepository.product = createProduct({
+      variants: [
+        {
+          id: VARIANT_ID,
+          name: "Regular",
+          sku: "COFFEE-REG",
+          price: 4500,
+          stockQuantity: 0,
+          isAvailable: true,
+        },
+        {
+          id: "507f1f77bcf86cd799439024",
+          name: "Large",
+          sku: "COFFEE-LARGE",
+          price: 6000,
+          stockQuantity: 5,
+          isAvailable: false,
+        },
+      ],
+    });
+    const service = createProductService(productRepository, new FakeCategoryRepository());
+
+    const result = await service.listPublic({
+      page: 1,
+      limit: 20,
+      available: "all",
+      sortBy: "name",
+      sortOrder: "asc",
+    });
+
+    expect(productRepository.lastListFilters).toEqual({
+      page: 1,
+      limit: 20,
+      categoryIds: [CATEGORY_ID],
+      isActive: true,
+      isArchived: false,
+      sortBy: "name",
+      sortOrder: "asc",
+    });
+    expect(result.items).toEqual([productRepository.product]);
+    expect(result.items[0]?.variants).toMatchObject([
+      { stockQuantity: 0, isAvailable: true },
+      { stockQuantity: 5, isAvailable: false },
+    ]);
+  });
+
+  it("does not expose an inactive or missing category when availability is all", async () => {
+    const productRepository = new FakeProductRepository();
+    const service = createProductService(productRepository, new FakeCategoryRepository());
+
+    const result = await service.listPublic({
+      page: 1,
+      limit: 20,
+      category: "hidden-category",
+      available: "all",
+      sortBy: "name",
+      sortOrder: "asc",
+    });
+
+    expect(result.items).toEqual([]);
+    expect(result.meta.total).toBe(0);
+    expect(productRepository.lastListFilters).toBeNull();
+  });
+
   it("records a price-history entry when an existing variant price changes", async () => {
     const productRepository = new FakeProductRepository();
     const service = createProductService(productRepository, new FakeCategoryRepository());
