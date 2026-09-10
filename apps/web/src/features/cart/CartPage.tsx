@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { SiteHeader } from "../../components/SiteHeader.js";
 import { formatRupees } from "../../lib/currency.js";
 import { CheckoutForm } from "../checkout/CheckoutForm.js";
+import { MAX_CART_ITEM_QUANTITY } from "./cart-context.js";
 import { useCart } from "./use-cart.js";
 
 export const CartPage = () => {
@@ -79,6 +80,29 @@ export const CartPage = () => {
                         <Typography sx={{ mt: 0.75, fontWeight: 750 }}>
                           {formatRupees(item.unitPrice)} each
                         </Typography>
+                        {(item.quantity >= item.stockQuantity ||
+                          item.quantity >= MAX_CART_ITEM_QUANTITY) && (
+                          <Typography
+                            role="status"
+                            variant="body2"
+                            color={
+                              item.quantity > Math.min(item.stockQuantity, MAX_CART_ITEM_QUANTITY)
+                                ? "error"
+                                : "text.secondary"
+                            }
+                            sx={{ mt: 1 }}
+                          >
+                            {item.stockQuantity === 0
+                              ? "Out of stock. Remove this item to continue."
+                              : item.quantity > item.stockQuantity
+                                ? `Only ${item.stockQuantity} available. Reduce the quantity or remove this item.`
+                                : item.quantity > MAX_CART_ITEM_QUANTITY
+                                  ? `Limit of ${MAX_CART_ITEM_QUANTITY} per item per order. Reduce the quantity to continue.`
+                                  : item.quantity === MAX_CART_ITEM_QUANTITY
+                                    ? `Limit of ${MAX_CART_ITEM_QUANTITY} per item per order.`
+                                    : `All ${item.stockQuantity} available are in your cart.`}
+                          </Typography>
+                        )}
                       </Box>
                       <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                         <IconButton
@@ -96,7 +120,9 @@ export const CartPage = () => {
                         </Typography>
                         <IconButton
                           size="small"
-                          disabled={item.quantity >= item.stockQuantity}
+                          disabled={
+                            item.quantity >= Math.min(item.stockQuantity, MAX_CART_ITEM_QUANTITY)
+                          }
                           onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                           aria-label={`Increase ${item.productName} ${item.variantName} quantity`}
                         >

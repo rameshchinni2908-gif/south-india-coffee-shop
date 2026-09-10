@@ -121,7 +121,7 @@ export const AppRoutes = () => (
           ) : null}
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route element={<AdminGate />}>
-            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin" element={<Navigate to="/admin/orders" replace />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />

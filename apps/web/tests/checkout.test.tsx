@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,13 +21,15 @@ const cartItem = {
   quantity: 1,
 };
 
-const renderRoute = (initialEntry: string) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  });
+const renderRoute = (initialEntry: string, client?: QueryClient) => {
+  const queryClient =
+    client ??
+    new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    });
 
   return render(
     <ThemeProvider theme={theme}>
@@ -40,8 +42,11 @@ const renderRoute = (initialEntry: string) => {
   );
 };
 
-const seedCart = () => {
-  window.localStorage.setItem("south-india-coffee-shop-cart", JSON.stringify([cartItem]));
+const seedCart = (overrides: Partial<typeof cartItem> = {}) => {
+  window.localStorage.setItem(
+    "south-india-coffee-shop-cart",
+    JSON.stringify([{ ...cartItem, ...overrides }]),
+  );
 };
 
 const successfulOrderResponse = () =>
@@ -122,35 +127,121 @@ describe("pickup checkout", () => {
     expect(requestBody).not.toHaveProperty("totalAmount");
   });
 
-  it("keeps the cart and shows the API stock error when checkout fails", async () => {
-    seedCart();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            success: false,
-            data: null,
-            meta: {},
-            error: {
-              code: "INSUFFICIENT_STOCK",
-              message: "Only 1 unit of Filter Coffee is available",
-            },
-          }),
-          { status: 409, headers: { "Content-Type": "application/json" } },
+  it.each(["INSUFFICIENT_STOCK", "PRODUCT_UNAVAILABLE", "VARIANT_UNAVAILABLE"])(
+    "keeps the cart and offers menu recovery for %s",
+    async (code) => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: 60_000 } },
+      });
+      const menuKey = ["products", { available: "all" }];
+      queryClient.setQueryData(menuKey, { products: [] });
+      seedCart();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              success: false,
+              data: null,
+              meta: {},
+              error: {
+                code,
+                message: "Only 1 unit of Filter Coffee is available",
+              },
+            }),
+            { status: 409, headers: { "Content-Type": "application/json" } },
+          ),
         ),
-      ),
-    );
+      );
+      const user = userEvent.setup();
+      renderRoute("/cart", queryClient);
+
+      await user.type(await screen.findByLabelText("Customer name"), "Ramesh Kumar");
+      await user.type(screen.getByLabelText("Mobile number"), "9876543210");
+      await user.click(screen.getByRole("button", { name: "Place pickup order" }));
+
+      expect(
+        await screen.findByText("Only 1 unit of Filter Coffee is available"),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText("Cart with 1 item")).toBeInTheDocument());
+      expect(screen.getByRole("link", { name: "Review menu" })).toHaveAttribute("href", "/");
+      expect(queryClient.getQueryState(menuKey)?.isInvalidated).toBe(true);
+      expect(
+        JSON.parse(window.localStorage.getItem("south-india-coffee-shop-cart") ?? "[]"),
+      ).toEqual([cartItem]);
+    },
+  );
+
+  it("explains reduced stock and blocks submission until the quantity is corrected", async () => {
+    seedCart({ quantity: 4, stockQuantity: 2 });
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderRoute("/cart");
 
     await user.type(await screen.findByLabelText("Customer name"), "Ramesh Kumar");
     await user.type(screen.getByLabelText("Mobile number"), "9876543210");
-    await user.click(screen.getByRole("button", { name: "Place pickup order" }));
+    const submitButton = screen.getByRole("button", { name: "Place pickup order" });
+    expect(
+      screen.getByText("Only 2 available. Reduce the quantity or remove this item."),
+    ).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    ).toBeDisabled();
+
+    const form = submitButton.closest("form");
+    if (!form) throw new Error("Checkout form missing");
+    fireEvent.submit(form);
+    await waitFor(() => expect(fetchMock).not.toHaveBeenCalled());
+
+    const decrease = screen.getByRole("button", {
+      name: "Decrease Filter Coffee Regular quantity",
+    });
+    await user.click(decrease);
+    expect(screen.getByLabelText("Cart with 3 items")).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+    await user.click(decrease);
+    expect(screen.getByLabelText("Cart with 2 items")).toBeInTheDocument();
+    expect(screen.getByText("All 2 available are in your cart.")).toBeInTheDocument();
+    expect(submitButton).toBeEnabled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps an out-of-stock cart item visible and lets the customer remove it", async () => {
+    seedCart({ quantity: 2, stockQuantity: 0 });
+    const user = userEvent.setup();
+    renderRoute("/cart");
 
     expect(
-      await screen.findByText("Only 1 unit of Filter Coffee is available"),
+      await screen.findByText("Out of stock. Remove this item to continue."),
     ).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText("Cart with 1 item")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Place pickup order" })).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Remove Filter Coffee Regular from cart" }),
+    );
+
+    expect(await screen.findByRole("heading", { name: "Your cart is empty" })).toBeInTheDocument();
+  });
+
+  it("explains the API quantity limit and lets an old cart recover without losing items", async () => {
+    seedCart({ quantity: 21, stockQuantity: 50 });
+    const user = userEvent.setup();
+    renderRoute("/cart");
+
+    expect(
+      await screen.findByText("Limit of 20 per item per order. Reduce the quantity to continue."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Place pickup order" })).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+
+    expect(screen.getByLabelText("Cart with 20 items")).toBeInTheDocument();
+    expect(screen.getByText("Limit of 20 per item per order.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Place pickup order" })).toBeEnabled();
   });
 });

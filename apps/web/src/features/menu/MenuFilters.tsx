@@ -96,6 +96,7 @@ export const MenuFilters = ({
           name="available"
           render={({ field }) => (
             <TextField select label="Availability" {...field}>
+              <MenuItem value="all">All items</MenuItem>
               <MenuItem value="true">Available now</MenuItem>
               <MenuItem value="false">Currently unavailable</MenuItem>
             </TextField>

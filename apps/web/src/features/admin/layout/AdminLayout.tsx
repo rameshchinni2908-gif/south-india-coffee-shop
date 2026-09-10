@@ -102,9 +102,6 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
               "& .MuiButton-root": { flex: "0 0 auto" },
             }}
           >
-            <Button component={Link} to="/admin/dashboard" startIcon={<DashboardOutlinedIcon />}>
-              Dashboard
-            </Button>
             <Button component={Link} to="/admin/orders" startIcon={<ReceiptLongOutlinedIcon />}>
               Orders
             </Button>
@@ -116,6 +113,9 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
                 Staff
               </Button>
             )}
+            <Button component={Link} to="/admin/dashboard" startIcon={<DashboardOutlinedIcon />}>
+              Dashboard
+            </Button>
           </Stack>
         </Container>
       </Box>

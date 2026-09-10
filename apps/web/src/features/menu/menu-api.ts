@@ -7,7 +7,7 @@ export interface ProductFilters {
   limit: number;
   search?: string;
   category?: string;
-  available: boolean;
+  available: boolean | "all";
   vegetarian?: boolean;
   sortBy: "name" | "createdAt" | "updatedAt";
   sortOrder: "asc" | "desc";

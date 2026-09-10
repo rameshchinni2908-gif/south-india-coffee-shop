@@ -13,7 +13,7 @@ export const getMenuProductFilters = (searchParams: URLSearchParams): ProductFil
   return {
     page: getPage(searchParams),
     limit: 12,
-    available: form.available === "true",
+    available: form.available === "all" ? "all" : form.available === "true",
     sortBy,
     sortOrder,
     ...(form.search ? { search: form.search } : {}),

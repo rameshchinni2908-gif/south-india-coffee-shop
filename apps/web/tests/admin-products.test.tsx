@@ -49,29 +49,6 @@ const product = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
-const dashboardSummary = {
-  generatedAt: "2026-08-21T10:00:00.000Z",
-  timezone: "Asia/Kolkata",
-  today: {
-    totalOrders: 0,
-    orderCount: 0,
-    salesTotal: 0,
-    itemsSold: 0,
-    statusCounts: {
-      PLACED: 0,
-      CONFIRMED: 0,
-      PREPARING: 0,
-      READY: 0,
-      COMPLETED: 0,
-      CANCELLED: 0,
-    },
-  },
-  month: { orderCount: 0, salesTotal: 0, itemsSold: 0 },
-  lowStockTotal: 0,
-  lowStockVariants: [],
-  recentPriceChanges: [],
-};
-
 const user = (role: "ADMIN" | "STAFF") => ({
   id: "507f1f77bcf86cd799439099",
   name: role === "ADMIN" ? "Admin User" : "Staff User",
@@ -121,8 +98,10 @@ const installAdminFetch = (
     if (url.endsWith("/api/auth/me")) {
       return Promise.resolve(apiResponse({ user: user(role) }));
     }
-    if (url.endsWith("/api/admin/reports/summary")) {
-      return Promise.resolve(apiResponse({ summary: dashboardSummary }));
+    if (url.includes("/api/admin/orders?") && method === "GET") {
+      return Promise.resolve(
+        apiResponse({ orders: [] }, 200, { page: 1, limit: 20, total: 0, totalPages: 0 }),
+      );
     }
     if (url.endsWith(`/api/admin/categories/${CATEGORY_ID}`) && method === "PATCH") {
       return Promise.resolve(apiResponse({ category: { ...category, isActive: false } }));
@@ -206,7 +185,7 @@ describe("admin product management", () => {
     expect(await screen.findByText("Invalid email or password")).toBeInTheDocument();
   });
 
-  it("signs in and loads the dashboard", async () => {
+  it("signs in and loads the order queue by default", async () => {
     const fetchMock = installAdminFetch("ADMIN");
     fetchMock.mockImplementationOnce(() => Promise.resolve(apiResponse({ user: user("ADMIN") })));
     const visitor = userEvent.setup();
@@ -216,8 +195,34 @@ describe("admin product management", () => {
     await visitor.type(screen.getByLabelText("Password"), "correct-password");
     await visitor.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open order queue" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Orders" })).toBeInTheDocument();
+    expect(await screen.findByText("No orders match the selected filters.")).toBeInTheDocument();
+  });
+
+  it.each(["ADMIN", "STAFF"] as const)("opens the order queue from /admin for %s", async (role) => {
+    installAdminFetch(role);
+    renderRoute("/admin");
+
+    expect(await screen.findByRole("heading", { name: "Orders" })).toBeInTheDocument();
+    expect(await screen.findByText("No orders match the selected filters.")).toBeInTheDocument();
+  });
+
+  it("returns to the requested products page after signing in", async () => {
+    const fetchMock = installAdminFetch("ADMIN");
+    fetchMock
+      .mockImplementationOnce(() =>
+        Promise.resolve(apiError(401, "AUTHENTICATION_REQUIRED", "Authentication is required")),
+      )
+      .mockImplementationOnce(() => Promise.resolve(apiResponse({ user: user("ADMIN") })));
+    const visitor = userEvent.setup();
+    renderRoute("/admin/products");
+
+    await visitor.type(await screen.findByLabelText("Email address"), "admin@example.com");
+    await visitor.type(screen.getByLabelText("Password"), "correct-password");
+    await visitor.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("heading", { name: "Filter Coffee" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Orders" })).not.toBeInTheDocument();
   });
 
   it("does not render the archive action for STAFF", async () => {

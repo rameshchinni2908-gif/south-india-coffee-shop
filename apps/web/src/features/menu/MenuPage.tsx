@@ -32,8 +32,8 @@ export const MenuPage = () => {
     if (values.category) {
       nextParams.set("category", values.category);
     }
-    if (values.available === "false") {
-      nextParams.set("available", "false");
+    if (values.available !== "all") {
+      nextParams.set("available", values.available);
     }
     if (values.vegetarian !== "all") {
       nextParams.set("vegetarian", values.vegetarian);

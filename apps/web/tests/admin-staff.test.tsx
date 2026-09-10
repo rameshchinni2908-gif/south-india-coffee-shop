@@ -28,29 +28,6 @@ const staffAccount = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
-const dashboardSummary = {
-  generatedAt: "2026-08-21T10:00:00.000Z",
-  timezone: "Asia/Kolkata",
-  today: {
-    totalOrders: 0,
-    orderCount: 0,
-    salesTotal: 0,
-    itemsSold: 0,
-    statusCounts: {
-      PLACED: 0,
-      CONFIRMED: 0,
-      PREPARING: 0,
-      READY: 0,
-      COMPLETED: 0,
-      CANCELLED: 0,
-    },
-  },
-  month: { orderCount: 0, salesTotal: 0, itemsSold: 0 },
-  lowStockTotal: 0,
-  lowStockVariants: [],
-  recentPriceChanges: [],
-};
-
 const apiResponse = (data: unknown, status = 200, meta: Record<string, number> = {}) =>
   new Response(JSON.stringify({ success: status < 400, data, meta, error: null }), {
     status,
@@ -93,8 +70,10 @@ const installFetch = (
     if (url.endsWith("/api/auth/me")) {
       return Promise.resolve(apiResponse({ user: currentUser(role) }));
     }
-    if (url.endsWith("/api/admin/reports/summary")) {
-      return Promise.resolve(apiResponse({ summary: dashboardSummary }));
+    if (url.includes("/api/admin/orders?") && method === "GET") {
+      return Promise.resolve(
+        apiResponse({ orders: [] }, 200, { page: 1, limit: 20, total: 0, totalPages: 0 }),
+      );
     }
     if (url.includes("/api/admin/staff-accounts?") && method === "GET") {
       return Promise.resolve(
@@ -141,7 +120,7 @@ describe("admin staff account management", () => {
     const fetchMock = installFetch("STAFF");
     renderRoute("/admin/staff");
 
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Orders" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Staff" })).not.toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([input]) => String(input).includes("/api/admin/staff-accounts")),

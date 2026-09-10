@@ -119,11 +119,19 @@ npm run dev:web
 
 Open `http://localhost:5173` to browse the customer menu. Search, category,
 availability, vegetarian, sorting, and pagination state is stored in the URL.
-Available variants can be added to the device-local cart. The `/cart` page
+The menu defaults to **All items**, including sold-out items with ordering disabled;
+customers can select **Available now** to hide them. Each size shows its selected
+quantity with plus/minus controls shared with the device-local cart. Controls explain
+stock limits and enforce the API's limit of 20 units per item per order. If stock
+changes, customers can reduce or remove affected items without losing their cart.
+The `/cart` page
 collects customer and pickup details, while the API reloads current products,
 validates stock, snapshots names and prices, and calculates the final total.
 Customers can check a pickup at `/track-order` with the order number and the
 mobile number used at checkout.
+
+Staff sign-in and `/admin` open Orders first. Dashboard is the last navigation
+tab, with the admin shop assistant above the statistics.
 
 ## Pickup orders
 

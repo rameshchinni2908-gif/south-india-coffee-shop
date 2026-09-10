@@ -2,6 +2,7 @@ import { createContext } from "react";
 import { z } from "zod";
 
 export const CART_STORAGE_KEY = "south-india-coffee-shop-cart";
+export const MAX_CART_ITEM_QUANTITY = 20;
 
 export const cartItemSchema = z.object({
   productId: z.string(),
@@ -22,6 +23,7 @@ export interface CartContextValue {
   itemCount: number;
   subtotal: number;
   addItem(item: NewCartItem): void;
+  syncItem(item: NewCartItem): void;
   updateQuantity(variantId: string, quantity: number): void;
   removeItem(variantId: string): void;
   clearCart(): void;

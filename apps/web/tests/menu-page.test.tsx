@@ -1,12 +1,15 @@
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppRoutes } from "../src/App.js";
 import { getCategoryArtwork } from "../src/features/menu/category-artwork.js";
+import { CartProvider } from "../src/features/cart/CartProvider.js";
+import { CART_STORAGE_KEY } from "../src/features/cart/cart-context.js";
+import { ProductVariantControl } from "../src/features/menu/ProductVariantControl.js";
 import { theme } from "../src/theme.js";
 
 const category = {
@@ -159,6 +162,192 @@ describe("customer menu", () => {
     );
 
     expect(screen.getByLabelText("Cart with 1 item")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("1");
+  });
+
+  it("shows per-item quantities, explains the stock limit, and removes the last unit", async () => {
+    installSuccessfulFetch([
+      { ...product, variants: [{ ...product.variants[0]!, stockQuantity: 2 }] },
+    ]);
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(
+      await screen.findByRole("button", { name: "Add Filter Coffee Regular to cart" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    );
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("2");
+    expect(screen.getByLabelText("Cart with 2 items")).toBeInTheDocument();
+    expect(screen.getByText("All 2 available added")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+    expect(screen.getByRole("button", { name: "Add Filter Coffee Regular to cart" })).toBeEnabled();
+    expect(screen.getByLabelText("Cart with 0 items")).toBeInTheDocument();
+  });
+
+  it("keeps menu and checkout quantities in sync in both directions", async () => {
+    installSuccessfulFetch();
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(
+      await screen.findByRole("button", { name: "Add Filter Coffee Regular to cart" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    );
+    await user.click(screen.getByRole("link", { name: "Cart with 2 items" }));
+    await screen.findByRole("heading", { name: "Your pickup order" });
+    await user.click(
+      await screen.findByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+    await user.click(screen.getByRole("link", { name: /Continue browsing/ }));
+    expect(
+      await screen.findByLabelText("Filter Coffee Regular quantity in cart"),
+    ).toHaveTextContent("1");
+  });
+
+  it("shows restored cart quantities independently for each size", async () => {
+    window.localStorage.setItem(
+      CART_STORAGE_KEY,
+      JSON.stringify([
+        {
+          productId: product.id,
+          productName: product.name,
+          variantId: product.variants[0]!.id,
+          variantName: "Regular",
+          sku: "COFFEE-REG",
+          unitPrice: 4500,
+          stockQuantity: 20,
+          quantity: 3,
+        },
+      ]),
+    );
+    installSuccessfulFetch([
+      {
+        ...product,
+        variants: [
+          product.variants[0]!,
+          {
+            ...product.variants[0]!,
+            id: "507f1f77bcf86cd799439023",
+            name: "Large",
+            sku: "COFFEE-LARGE",
+          },
+        ],
+      },
+    ]);
+    const user = userEvent.setup();
+    renderMenu();
+    expect(
+      await screen.findByLabelText("Filter Coffee Regular quantity in cart"),
+    ).toHaveTextContent("3");
+    await user.click(screen.getByRole("button", { name: "Add Filter Coffee Large to cart" }));
+    expect(screen.getByLabelText("Filter Coffee Large quantity in cart")).toHaveTextContent("1");
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("3");
+    expect(screen.getByLabelText("Cart with 4 items")).toBeInTheDocument();
+  });
+
+  it("lists sold-out and unavailable sizes clearly without allowing additions", async () => {
+    const fetchMock = installSuccessfulFetch([
+      {
+        ...product,
+        variants: [
+          { ...product.variants[0]!, stockQuantity: 0 },
+          {
+            ...product.variants[0]!,
+            id: "507f1f77bcf86cd799439023",
+            name: "Large",
+            isAvailable: false,
+          },
+        ],
+      },
+    ]);
+    renderMenu();
+    const regular = await screen.findByRole("group", { name: "Filter Coffee Regular" });
+    expect(within(regular).getByText("Out of stock")).toBeVisible();
+    expect(within(regular).getByRole("button")).toBeDisabled();
+    const large = screen.getByRole("group", { name: "Filter Coffee Large" });
+    expect(within(large).getByText("Currently unavailable")).toBeVisible();
+    expect(within(large).getByRole("button")).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("available=all"))).toBe(
+      true,
+    );
+  });
+
+  it("explains stock reductions without hiding the quantity the customer selected", async () => {
+    const user = userEvent.setup();
+    const renderVariant = (stockQuantity: number) => (
+      <ThemeProvider theme={theme}>
+        <CartProvider>
+          <ProductVariantControl
+            product={{ ...product, isArchived: false, archivedAt: null, archivedBy: null }}
+            variant={{ ...product.variants[0]!, stockQuantity }}
+          />
+        </CartProvider>
+      </ThemeProvider>
+    );
+    const view = render(renderVariant(2));
+    await user.click(screen.getByRole("button", { name: "Add Filter Coffee Regular to cart" }));
+    await user.click(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    );
+    view.rerender(renderVariant(1));
+    expect(screen.getByText("Only 1 available. Reduce your quantity.")).toBeVisible();
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("2");
+    expect(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    ).toBeDisabled();
+    view.rerender(renderVariant(0));
+    expect(screen.getByText("Out of stock. Remove from your cart to continue.")).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("1");
+    await user.click(
+      screen.getByRole("button", { name: "Decrease Filter Coffee Regular quantity" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Filter Coffee Regular out of stock" }),
+    ).toBeDisabled();
+  });
+
+  it("explains the per-order limit when stock exceeds it", async () => {
+    window.localStorage.setItem(
+      CART_STORAGE_KEY,
+      JSON.stringify([
+        {
+          productId: product.id,
+          productName: product.name,
+          variantId: product.variants[0]!.id,
+          variantName: "Regular",
+          sku: "COFFEE-REG",
+          unitPrice: 4500,
+          stockQuantity: 50,
+          quantity: 19,
+        },
+      ]),
+    );
+    installSuccessfulFetch([
+      { ...product, variants: [{ ...product.variants[0]!, stockQuantity: 50 }] },
+    ]);
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(
+      await screen.findByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    );
+    expect(screen.getByText("Limit of 20 per order")).toBeVisible();
+    expect(screen.getByLabelText("Filter Coffee Regular quantity in cart")).toHaveTextContent("20");
+    expect(
+      screen.getByRole("button", { name: "Increase Filter Coffee Regular quantity" }),
+    ).toBeDisabled();
   });
 
   it("shows a useful empty state", async () => {

@@ -2,13 +2,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { Alert, Button, CircularProgress, Stack, TextField, Typography } from "@mui/material";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { ApiClientError } from "../../lib/api-client.js";
-import type { CartItem } from "../cart/cart-context.js";
+import { MAX_CART_ITEM_QUANTITY, type CartItem } from "../cart/cart-context.js";
 import { useCart } from "../cart/use-cart.js";
 import {
   checkoutFormSchema,
@@ -23,8 +23,11 @@ interface CheckoutFormProps {
   items: CartItem[];
 }
 
+const STOCK_ERROR_CODES = ["INSUFFICIENT_STOCK", "PRODUCT_UNAVAILABLE", "VARIANT_UNAVAILABLE"];
+
 export const CheckoutForm = ({ items }: CheckoutFormProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { clearCart } = useCart();
   const [checkoutStartedAt] = useState(() => Date.now());
   const earliestPickupTime = useMemo(
@@ -49,8 +52,15 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
     },
   });
   const orderMutation = useMutation({ mutationFn: createOrder });
+  const hasQuantityIssue = items.some(
+    (item) => item.quantity > Math.min(item.stockQuantity, MAX_CART_ITEM_QUANTITY),
+  );
 
   const submitOrder = async (values: CheckoutFormValues) => {
+    if (hasQuantityIssue || items.length === 0) {
+      return;
+    }
+
     try {
       const order = await orderMutation.mutateAsync({
         customerName: values.customerName,
@@ -67,7 +77,10 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
       saveOrderConfirmation(order);
       clearCart();
       navigate(`/order-confirmation/${order.orderNumber}`, { state: { order } });
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiClientError && STOCK_ERROR_CODES.includes(error.code)) {
+        void queryClient.invalidateQueries({ queryKey: ["products"] });
+      }
       // The mutation state renders the API's safe error message without leaving the checkout page.
     }
   };
@@ -77,6 +90,9 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
       : orderMutation.isError
         ? "We could not place your order. Please try again."
         : null;
+  const hasServerStockError =
+    orderMutation.error instanceof ApiClientError &&
+    STOCK_ERROR_CODES.includes(orderMutation.error.code);
 
   return (
     <Stack
@@ -92,7 +108,25 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
         We’ll use these details only to prepare and identify this pickup order.
       </Typography>
 
-      {submitError && <Alert severity="error">{submitError}</Alert>}
+      {hasQuantityIssue ? (
+        <Alert severity="warning">
+          Update the quantities or remove unavailable items in your cart before placing your order.
+        </Alert>
+      ) : submitError ? (
+        <Alert severity={hasServerStockError ? "warning" : "error"}>
+          {submitError}
+          {hasServerStockError && (
+            <Stack spacing={0.5} sx={{ mt: 1 }}>
+              <Typography variant="body2">
+                Your cart is saved. Review the menu for current availability and adjust your items.
+              </Typography>
+              <Button component={Link} to="/" size="small" sx={{ alignSelf: "flex-start" }}>
+                Review menu
+              </Button>
+            </Stack>
+          )}
+        </Alert>
+      ) : null}
 
       <TextField
         label="Customer name"
@@ -138,7 +172,7 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
         type="submit"
         variant="contained"
         size="large"
-        disabled={orderMutation.isPending}
+        disabled={orderMutation.isPending || hasQuantityIssue || items.length === 0}
         startIcon={orderMutation.isPending ? <CircularProgress size={18} /> : <LockOutlinedIcon />}
       >
         {orderMutation.isPending ? "Placing order…" : "Place pickup order"}

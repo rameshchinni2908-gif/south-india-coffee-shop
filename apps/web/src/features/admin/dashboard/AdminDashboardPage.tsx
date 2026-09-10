@@ -164,6 +164,8 @@ export const AdminDashboardPage = () => {
 
         {summary && (
           <Stack spacing={3}>
+            {user.role === "ADMIN" && <ShopAssistantCard key={user.id} />}
+
             <Box
               sx={{
                 display: "grid",
@@ -200,8 +202,6 @@ export const AdminDashboardPage = () => {
                 icon={<Inventory2OutlinedIcon />}
               />
             </Box>
-
-            {user.role === "ADMIN" && <ShopAssistantCard key={user.id} />}
 
             <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 } }}>
               <Stack

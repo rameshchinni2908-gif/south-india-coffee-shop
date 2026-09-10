@@ -1,22 +1,11 @@
-import AddShoppingCartRoundedIcon from "@mui/icons-material/AddShoppingCartRounded";
 import CoffeeRoundedIcon from "@mui/icons-material/CoffeeRounded";
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardMedia,
-  Chip,
-  Divider,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Card, CardContent, CardMedia, Chip, Divider, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 
 import { formatRupees } from "../../lib/currency.js";
 import type { Product } from "../../types/catalog.js";
-import { useCart } from "../cart/use-cart.js";
 import { getCategoryArtwork, getCategoryArtworkSrcSet } from "./category-artwork.js";
+import { ProductVariantControl } from "./ProductVariantControl.js";
 
 interface ProductCardProps {
   product: Product;
@@ -32,7 +21,6 @@ export const ProductCard = ({
   animationOrder = 0,
 }: ProductCardProps) => {
   const [failedImages, setFailedImages] = useState<string[]>([]);
-  const { addItem } = useCart();
   const minimumPrice = Math.min(...product.variants.map((variant) => variant.price));
   const categoryArtwork = getCategoryArtwork(categorySlug, categoryName);
   const imageSource = [product.imageUrl, categoryArtwork].find(
@@ -173,57 +161,9 @@ export const ProductCard = ({
         <Divider sx={{ my: 2 }} />
 
         <Stack spacing={1.25} sx={{ mt: "auto" }}>
-          {product.variants.map((variant) => {
-            const isSellable = variant.isAvailable && variant.stockQuantity > 0;
-
-            return (
-              <Stack
-                key={variant.id}
-                direction="row"
-                spacing={2}
-                useFlexGap
-                sx={{ alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 750 }}>
-                    {variant.name}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: isSellable ? "success.main" : "text.disabled" }}
-                  >
-                    {isSellable ? "Available" : "Unavailable"}
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 850 }}>
-                    {formatRupees(variant.price)}
-                  </Typography>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    disabled={!isSellable}
-                    startIcon={<AddShoppingCartRoundedIcon />}
-                    sx={{ minWidth: 82 }}
-                    onClick={() =>
-                      addItem({
-                        productId: product.id,
-                        productName: product.name,
-                        variantId: variant.id,
-                        variantName: variant.name,
-                        sku: variant.sku,
-                        unitPrice: variant.price,
-                        stockQuantity: variant.stockQuantity,
-                      })
-                    }
-                    aria-label={`Add ${product.name} ${variant.name} to cart`}
-                  >
-                    Add
-                  </Button>
-                </Stack>
-              </Stack>
-            );
-          })}
+          {product.variants.map((variant) => (
+            <ProductVariantControl key={variant.id} product={product} variant={variant} />
+          ))}
         </Stack>
       </CardContent>
     </Card>
