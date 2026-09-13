@@ -1,14 +1,17 @@
-import { runAdminBriefAgent } from "../agents/admin-brief-agent.js";
+import { runShopAssistantAgent, type ShopAssistantSource } from "../agents/shop-assistant-agent.js";
 import type { Respond } from "../agents/openai-responses.js";
-import { projectShopSummary } from "../agents/shop-summary-tool.js";
+import { projectShopAssistantSummary } from "../agents/shop-assistant-summary.js";
+import { createShopMenuTool } from "../agents/shop-menu-tool.js";
 import { HttpError } from "../middleware/http-error.js";
 import { adminBriefQuestionSchema } from "../validation/admin-agent-schemas.js";
 import type { ReportService } from "./report-service.js";
+import type { ProductService } from "./product-service.js";
 
 export interface AdminBriefing {
   answer: string;
   usedShopData: boolean;
   generatedAt: string;
+  sources?: ShopAssistantSource[];
 }
 
 export interface AdminAgentService {
@@ -18,17 +21,20 @@ export interface AdminAgentService {
 
 interface CreateAdminAgentServiceOptions {
   reportService: ReportService;
+  productService: Pick<ProductService, "listPublic">;
   respond?: Respond;
   now?: () => Date;
 }
 
 export const createAdminAgentService = ({
   reportService,
+  productService,
   respond,
   now = () => new Date(),
 }: CreateAdminAgentServiceOptions): AdminAgentService => {
   // This shop uses one API process. Limit simultaneous paid runs across all admins.
   let inFlight = false;
+  const getShopMenu = createShopMenuTool(productService, now);
 
   return {
     getStatus: () => ({ enabled: Boolean(respond) }),
@@ -58,20 +64,18 @@ export const createAdminAgentService = ({
 
       inFlight = true;
       try {
-        let snapshotTime: string | undefined;
-        const briefing = await runAdminBriefAgent(parsed.data, {
+        return await runShopAssistantAgent(parsed.data, {
           respond,
+          getShopMenu,
+          now,
           getShopSummary: async () => {
             const summary = await reportService.getSummary();
-            const snapshot = projectShopSummary({
+            return projectShopAssistantSummary({
               ...summary,
               generatedAt: summary.generatedAt.toISOString(),
             });
-            snapshotTime = snapshot.generatedAt;
-            return snapshot;
           },
         });
-        return { ...briefing, generatedAt: snapshotTime ?? now().toISOString() };
       } catch {
         // Do not propagate provider/database errors into HTTP responses or request logs.
         throw new HttpError(

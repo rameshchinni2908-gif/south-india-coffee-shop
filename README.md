@@ -5,14 +5,18 @@ Monorepo for the JRG South Indian Coffee Shop application.
 For a small, guided introduction to AI agents using this app's protected admin
 report, start with [the admin briefing agent lesson](apps/api/examples/admin-agent/README.md).
 The terminal lesson remains available. Admins can also use the **Shop assistant**
-card on the dashboard after configuring the API as described below.
+card on the dashboard after configuring the API as described below. The next
+[RAG lesson](apps/api/examples/admin-agent/RAG.md) explains how the production
+assistant retrieves shop guidance and combines it with live information.
 
 ## Shop assistant
 
-Sign in as an `ADMIN`, open the dashboard, and select **Generate briefing** in
-the Shop assistant card. You can edit the question to ask about today's orders,
-completed sales, or low stock. Each question starts a fresh run; there is no chat
-memory. Compare suggestions with the dashboard before acting on them.
+Sign in as an `ADMIN`, open the dashboard, and select **Ask assistant** in
+the Shop assistant card above the statistics. Ask about menu prices, availability,
+pickup and payment, staff workflows, today's orders, today's or this month's
+completed sales, or low stock. Example-question buttons fill the question;
+generation starts when you submit it. Each question starts a fresh run with no
+chat memory. Expand **References retrieved** to inspect the supplied evidence.
 
 Configure these variables on the **Render API service only**, then deploy:
 
@@ -30,14 +34,30 @@ Remove the key and redeploy to disable it again.
 The browser calls `GET /api/admin/agent/status` to check availability and
 `POST /api/admin/agent/brief` with `{ "question": "How is the shop doing today?" }`
 to generate a briefing. Only active admins can use these routes. The backend
-reuses the lesson's agent loop and reads the report service directly. It sends
-only the permitted daily totals and low-stock fields to OpenAI; customer details,
-staff identities, passwords, and database credentials are excluded. The report's
-generation time is included so the answer can be checked against its snapshot.
+uses `runShopAssistantAgent`: it searches the curated notes in
+`shop-knowledge.ts` with a small keyword retriever, includes at most four matching
+chunks in the question context, and offers two read tools for current facts.
+`get_shop_menu` reads up to 30 active products, including sold-out sizes;
+`get_shop_summary` reads today's activity, daily/monthly completed sales, and
+up to ten low-stock variants. Both tools call existing services directly and
+project permitted fields. Customer details, staff identities, passwords, and
+database credentials are excluded from these sources. The admin's submitted
+question is also sent to OpenAI.
+
+Answers are instructed to cite the supplied reference notes (`K1` etc.), menu
+(`M1`), or report (`R1`). The reference list shows what was retrieved, not a
+guarantee that every generated claim is correct. Source limits and partial lists
+remain visible. Opening hours, address, contact details, refunds, and allergen
+information remain unconfirmed until the shop owner supplies verified facts.
+Knowledge changes require an API build and deployment; there is no file upload,
+embedding service, or model training in this implementation. The original
+`npm run agent:brief` terminal lesson retains its one-tool daily-report flow.
 
 Generation runs only when requested, with no automatic retry. A run makes at
-most two model requests and one report-tool call. The API permits five attempts
-per admin per 15 minutes and one active briefing per process. These controls
+most two model requests and one round of live tools: at most one menu read and
+one report read. Reference-only questions can finish with one model request and
+no live tool calls. The API permits five attempts per admin per 15 minutes and
+one active answer per process. These controls
 reset when the service restarts and are not a monthly spending cap. OpenAI API
 credits are required. The assistant has no tools to change shop records.
 

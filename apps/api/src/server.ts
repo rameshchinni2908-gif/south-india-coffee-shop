@@ -6,6 +6,10 @@ import pino from "pino";
 
 import { createApp } from "./app.js";
 import { createOpenAiResponder } from "./agents/openai-responses.js";
+import {
+  SHOP_ASSISTANT_INSTRUCTIONS,
+  SHOP_ASSISTANT_TOOLS,
+} from "./agents/shop-assistant-instructions.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
 import { createSipModule } from "./modules/secret-sip/index.js";
@@ -76,11 +80,16 @@ const startServer = async (): Promise<void> => {
   const staffAccountService = createStaffAccountService(userRepository);
   const adminAgentService = createAdminAgentService({
     reportService,
+    productService,
     ...(environment.OPENAI_API_KEY
       ? {
           respond: createOpenAiResponder({
             apiKey: environment.OPENAI_API_KEY,
             model: environment.OPENAI_MODEL,
+            instructions: SHOP_ASSISTANT_INSTRUCTIONS,
+            tools: SHOP_ASSISTANT_TOOLS,
+            parallelToolCalls: true,
+            maxOutputTokens: 2200,
           }),
         }
       : {}),

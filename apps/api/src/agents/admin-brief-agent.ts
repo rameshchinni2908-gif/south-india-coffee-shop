@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { adminBriefQuestionSchema } from "../validation/admin-agent-schemas.js";
-import type { ModelInput, ModelResponse, Respond } from "./openai-responses.js";
+import type { ModelInput, Respond } from "./openai-responses.js";
+import { readModelAnswer as readAnswer } from "./read-model-answer.js";
 import type { ShopSnapshot } from "./shop-summary-tool.js";
 
 const callSchema = z.object({
@@ -10,22 +11,6 @@ const callSchema = z.object({
   arguments: z.string(),
   call_id: z.string().min(1),
 });
-
-const readAnswer = (response: ModelResponse): string => {
-  const messageSchema = z.object({
-    type: z.literal("message"),
-    content: z.array(z.object({ type: z.literal("output_text"), text: z.string() })),
-  });
-  const answer = response.output
-    .flatMap((item) => {
-      const message = messageSchema.safeParse(item);
-      return message.success ? message.data.content.map((content) => content.text) : [];
-    })
-    .join("\n")
-    .trim();
-  if (!answer) throw new Error("The model did not return a text answer.");
-  return answer;
-};
 
 interface AgentDependencies {
   respond: Respond;

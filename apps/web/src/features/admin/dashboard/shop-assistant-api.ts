@@ -1,9 +1,17 @@
 import { apiGet, apiPost } from "../../../lib/api-client.js";
 
+export interface ShopAssistantSource {
+  id: string;
+  title: string;
+  kind: "knowledge" | "menu" | "report";
+  excerpt: string;
+}
+
 export interface ShopBriefing {
   answer: string;
   usedShopData: boolean;
   generatedAt: string;
+  sources?: ShopAssistantSource[];
 }
 
 export const getShopAssistantStatus = async (signal?: AbortSignal) => {

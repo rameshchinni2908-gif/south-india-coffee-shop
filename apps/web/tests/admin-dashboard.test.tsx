@@ -147,7 +147,7 @@ describe("admin dashboard", () => {
     renderDashboard();
 
     expect(await screen.findByRole("heading", { name: "Shop assistant" })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Generate briefing" })).toBeEnabled();
+    expect(await screen.findByRole("button", { name: "Ask assistant" })).toBeEnabled();
   });
 
   it("renders a retryable error state when the summary request fails", async () => {

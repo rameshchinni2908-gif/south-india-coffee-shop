@@ -1,6 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -28,6 +32,25 @@ const questionSchema = z.object({
     .max(500, "Keep your question within 500 characters."),
 });
 
+const EXAMPLE_QUESTIONS = [
+  {
+    label: "Menu & prices",
+    question: "Which coffee options are available and what do they cost?",
+  },
+  {
+    label: "Pickup & payment",
+    question: "What should customers know about pickup and payment?",
+  },
+  {
+    label: "Staff workflow",
+    question: "How should staff process an order from placed to completed?",
+  },
+  {
+    label: "Sales summary",
+    question: "How are today's and this month's sales doing?",
+  },
+] as const;
+
 export const ShopAssistantCard = () => {
   const statusQuery = useQuery({
     queryKey: ["admin", "agent", "status"],
@@ -44,6 +67,8 @@ export const ShopAssistantCard = () => {
   const {
     register,
     handleSubmit,
+    setValue,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<z.infer<typeof questionSchema>>({
     resolver: zodResolver(questionSchema),
@@ -55,8 +80,18 @@ export const ShopAssistantCard = () => {
   const errorMessage =
     briefingMutation.error instanceof ApiClientError
       ? briefingMutation.error.message
-      : "The briefing could not be generated. Please try again.";
+      : "The answer could not be generated. Please try again.";
   const briefing = briefingMutation.data;
+  const sources = briefing?.sources;
+  const sourceLabel = sources
+    ? sources.some((source) => source.kind === "menu" || source.kind === "report")
+      ? "Live shop data"
+      : sources.some((source) => source.kind === "knowledge")
+        ? "Shop reference notes"
+        : "General guidance"
+    : briefing?.usedShopData
+      ? "Shop report used"
+      : "General guidance";
 
   return (
     <Paper
@@ -90,7 +125,8 @@ export const ShopAssistantCard = () => {
               Shop assistant
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              A quick briefing on today’s orders, sales and low stock.
+              Ask about menu prices, pickup and payment, staff workflows, stock, or today’s and this
+              month’s sales.
             </Typography>
           </Box>
         </Stack>
@@ -133,6 +169,36 @@ export const ShopAssistantCard = () => {
               })(event);
             }}
           >
+            <Box>
+              <Typography variant="caption" color="text.secondary" component="p" sx={{ mb: 1 }}>
+                Try a question, then choose Ask assistant.
+              </Typography>
+              <Stack
+                direction="row"
+                useFlexGap
+                spacing={1}
+                role="group"
+                aria-label="Example questions"
+                sx={{ flexWrap: "wrap" }}
+              >
+                {EXAMPLE_QUESTIONS.map(({ label, question }) => (
+                  <Chip
+                    key={label}
+                    component="button"
+                    type="button"
+                    label={label}
+                    variant="outlined"
+                    disabled={isGenerating}
+                    onClick={() => {
+                      briefingMutation.reset();
+                      setValue("question", question, { shouldDirty: true, shouldValidate: true });
+                      setFocus("question");
+                    }}
+                    sx={{ minHeight: 40, height: "auto", bgcolor: "background.paper" }}
+                  />
+                ))}
+              </Stack>
+            </Box>
             <TextField
               label="Ask about your shop"
               multiline
@@ -140,11 +206,11 @@ export const ShopAssistantCard = () => {
               maxRows={5}
               fullWidth
               disabled={isGenerating}
-              {...register("question")}
+              {...register("question", { onChange: () => briefingMutation.reset() })}
               error={Boolean(errors.question)}
               helperText={
                 errors.question?.message ??
-                "Up to 500 characters. Each question starts a fresh briefing."
+                "Up to 500 characters. Each question is independent; previous answers are not remembered."
               }
               slotProps={{ htmlInput: { maxLength: 500 } }}
               sx={{ bgcolor: "background.paper", borderRadius: 2 }}
@@ -155,7 +221,7 @@ export const ShopAssistantCard = () => {
               sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
             >
               <Typography variant="caption" color="text.secondary">
-                Reads shop reports. Changes to your shop stay in your hands.
+                Reads shop information. Changes to your shop stay in your hands.
               </Typography>
               <Button
                 type="submit"
@@ -170,7 +236,7 @@ export const ShopAssistantCard = () => {
                 }
                 sx={{ flexShrink: 0 }}
               >
-                {isGenerating ? "Preparing briefing…" : "Generate briefing"}
+                {isGenerating ? "Preparing answer…" : "Ask assistant"}
               </Button>
             </Stack>
             <Box aria-live="polite" aria-atomic="true">
@@ -189,13 +255,9 @@ export const ShopAssistantCard = () => {
                     sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}
                   >
                     <Typography component="h3" variant="h6">
-                      Your shop briefing
+                      Your answer
                     </Typography>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={briefing.usedShopData ? "Shop report used" : "General guidance"}
-                    />
+                    <Chip size="small" variant="outlined" label={sourceLabel} />
                   </Stack>
                   <Typography
                     component="div"
@@ -203,10 +265,48 @@ export const ShopAssistantCard = () => {
                   >
                     {briefing.answer}
                   </Typography>
+                  {sources && sources.length > 0 && (
+                    <Accordion
+                      disableGutters
+                      elevation={0}
+                      variant="outlined"
+                      sx={{ bgcolor: "background.paper", "&::before": { display: "none" } }}
+                    >
+                      <AccordionSummary
+                        expandIcon={<ExpandMoreRoundedIcon />}
+                        id="shop-assistant-references-toggle"
+                        aria-controls="shop-assistant-references"
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                          References retrieved ({sources.length})
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Typography variant="caption" color="text.secondary" component="p">
+                          These references were provided to the assistant for this question.
+                        </Typography>
+                        <Stack component="ul" spacing={1.5} sx={{ pl: 2.5, mb: 0, mt: 1.5 }}>
+                          {sources.map((source) => (
+                            <Box component="li" key={source.id} sx={{ overflowWrap: "anywhere" }}>
+                              <Typography component="h4" variant="body2" sx={{ fontWeight: 750 }}>
+                                [{source.id}] {source.title}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}
+                              >
+                                {source.excerpt}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
                   <Typography variant="caption" color="text.secondary">
-                    {briefing.usedShopData ? "Report as of" : "Generated"}{" "}
-                    {formatShopDateTime(briefing.generatedAt)} IST. AI can make mistakes; check
-                    figures in your reports before acting.
+                    Generated {formatShopDateTime(briefing.generatedAt)} IST. AI can make mistakes;
+                    check shop information before acting.
                   </Typography>
                 </Stack>
               )}

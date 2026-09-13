@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelResponse, Respond } from "../src/agents/openai-responses.js";
 import { createAdminAgentService } from "../src/services/admin-agent-service.js";
 import type { ReportService } from "../src/services/report-service.js";
+import type { ProductService } from "../src/services/product-service.js";
 import type { DashboardSummary } from "../src/types/report.js";
 
 const summary: DashboardSummary = {
@@ -63,18 +64,21 @@ const modelAnswer: ModelResponse = {
 };
 const createDependencies = () => ({
   reportService: { getSummary: vi.fn<ReportService["getSummary"]>().mockResolvedValue(summary) },
+  productService: { listPublic: vi.fn<ProductService["listPublic"]>() },
   respond: vi.fn<Respond>(),
   now: () => new Date("2026-09-10T08:01:00.000Z"),
 });
 
 describe("production admin agent service", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("runs the real tool loop against the report service and sends only the allowed projection", async () => {
     const deps = createDependencies();
     deps.respond.mockResolvedValueOnce(toolRequest).mockResolvedValueOnce(modelAnswer);
     const service = createAdminAgentService(deps);
 
     expect(service.getStatus()).toEqual({ enabled: true });
-    expect(await service.createBriefing("  What is low on stock?  ")).toEqual({
+    expect(await service.createBriefing("  What is low on stock?  ")).toMatchObject({
       answer: "Coffee powder — Regular is at 5.",
       usedShopData: true,
       generatedAt: "2026-09-10T08:00:00.000Z",
@@ -91,20 +95,28 @@ describe("production admin agent service", () => {
     expect(toolOutput).toMatchObject({ call_id: "call_summary" });
     const sent = String(toolOutput?.output);
     expect(JSON.parse(sent)).toMatchObject({
-      generatedAt: "2026-09-10T08:00:00.000Z",
-      completedSalesUpdatedToday: { salesTotalPaise: 4550, salesTotalFormatted: "₹45.50" },
-      lowStock: {
-        listedVariants: [
-          { productName: "Coffee powder", variantName: "Regular", stockQuantity: 5 },
-        ],
+      sourceId: "R1",
+      data: {
+        generatedAt: "2026-09-10T08:00:00.000Z",
+        completedSalesUpdatedToday: { salesTotalPaise: 4550, salesTotalFormatted: "₹45.50" },
+        completedSalesUpdatedThisMonth: { salesTotalPaise: 90000, salesTotalFormatted: "₹900.00" },
+        lowStock: {
+          listedVariants: [
+            { productName: "Coffee powder", variantName: "Regular", stockQuantity: 5 },
+          ],
+        },
       },
     });
-    expect(sent).not.toMatch(/private|Private Staff|recentPriceChanges|month|sku/);
+    expect(sent).not.toMatch(/private|Private Staff|recentPriceChanges|sku/);
+    expect(deps.productService.listPublic).not.toHaveBeenCalled();
   });
 
   it("keeps the API available without a configured model and performs no report reads", async () => {
     const deps = createDependencies();
-    const service = createAdminAgentService({ reportService: deps.reportService });
+    const service = createAdminAgentService({
+      reportService: deps.reportService,
+      productService: deps.productService,
+    });
     expect(service.getStatus()).toEqual({ enabled: false });
     await expect(service.createBriefing("Summarize today")).rejects.toMatchObject({
       statusCode: 503,
@@ -172,6 +184,36 @@ describe("production admin agent service", () => {
       createAdminAgentService(deps).createBriefing("Summarize today"),
     ).rejects.toMatchObject({ code: "AGENT_UNAVAILABLE" });
     expect(deps.respond).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the global briefing guard when a database read exceeds the time limit", async () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(new AbortController().signal)
+      .mockReturnValueOnce(controller.signal);
+    const deps = createDependencies();
+    deps.reportService.getSummary.mockImplementation(() => new Promise(() => undefined));
+    deps.respond.mockResolvedValueOnce(toolRequest).mockResolvedValue(modelAnswer);
+    const service = createAdminAgentService(deps);
+
+    const first = service.createBriefing("Summarize today");
+    const timedOut = expect(first).rejects.toMatchObject({
+      statusCode: 503,
+      code: "AGENT_UNAVAILABLE",
+      message: "The shop assistant could not complete the briefing. Please try again later.",
+    });
+    await vi.waitFor(() => expect(deps.reportService.getSummary).toHaveBeenCalledTimes(1));
+    expect(timeout).toHaveBeenCalledWith(90_000);
+    controller.abort(new Error("private abort reason"));
+
+    await timedOut;
+    expect(deps.respond).toHaveBeenCalledTimes(1);
+    await expect(service.createBriefing("Explain your scope")).resolves.toMatchObject({
+      usedShopData: false,
+    });
+    expect(deps.respond).toHaveBeenCalledTimes(2);
+    expect(deps.reportService.getSummary).toHaveBeenCalledTimes(1);
   });
 
   it.each(["", " ", "x".repeat(501)])(

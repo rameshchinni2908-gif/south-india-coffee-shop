@@ -11,6 +11,7 @@ export type ModelInput = Record<string, unknown>;
 export interface ModelRequest {
   input: ModelInput[];
   toolChoice: "auto" | "none";
+  signal?: AbortSignal;
 }
 export type Respond = (request: ModelRequest) => Promise<ModelResponse>;
 
@@ -38,28 +39,38 @@ export const createOpenAiResponder =
     apiKey,
     model,
     fetcher = fetch,
+    instructions = AGENT_INSTRUCTIONS,
+    tools = [SUMMARY_TOOL],
+    parallelToolCalls = false,
+    maxOutputTokens = 1600,
   }: {
     apiKey: string;
     model: string;
     fetcher?: typeof fetch;
+    instructions?: string;
+    tools?: readonly Record<string, unknown>[];
+    parallelToolCalls?: boolean;
+    maxOutputTokens?: number;
   }): Respond =>
-  async ({ input, toolChoice }) => {
+  async ({ input, toolChoice, signal }) => {
     const response = await fetcher("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        instructions: AGENT_INSTRUCTIONS,
+        instructions,
         input,
-        tools: [SUMMARY_TOOL],
+        tools,
         tool_choice: toolChoice,
-        parallel_tool_calls: false,
-        max_output_tokens: 1600,
+        parallel_tool_calls: parallelToolCalls,
+        max_output_tokens: maxOutputTokens,
         store: false,
         include: ["reasoning.encrypted_content"],
       }),
       redirect: "error",
-      signal: AbortSignal.timeout(60_000),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(60_000)])
+        : AbortSignal.timeout(60_000),
     });
     if (!response.ok)
       throw new Error(

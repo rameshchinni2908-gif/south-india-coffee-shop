@@ -2,30 +2,31 @@
 
 This lesson builds a small **daily briefing agent**. You ask, “How is the shop doing today? What should I check first?” It can read the shop's existing protected report and turn its figures into a short explanation with practical checks for the admin.
 
-The benefit is a quicker start to a shift: understand today's activity and see which stock needs attention. The existing dashboard remains the source of the figures. The learning example runs in your terminal and has one tool, `get_shop_summary`. The admin dashboard now uses the same agent loop through the server integration described below. It cannot change orders, prices or stock.
+The benefit is a quicker start to a shift: understand today's activity and see which stock needs attention. The existing dashboard remains the source of the figures. The learning example runs in your terminal and has one tool, `get_shop_summary`. The production dashboard now uses an expanded assistant with reference retrieval and two live read tools, explained in the [next RAG lesson](RAG.md). Both versions leave changes to orders, prices and stock to staff.
 
 Start with the plain function, see its real data, then add the model. You do not need an agent framework or a new dependency.
 
-## Using the same agent in the production dashboard
+## Using the expanded assistant in the production dashboard
 
-An account with the `ADMIN` role can request a briefing from the dashboard. The server needs `OPENAI_API_KEY` in its Render environment settings and uses `OPENAI_MODEL=gpt-5.4-mini` by default. Keep the key on the server; it never belongs in a `VITE_` variable. Without a key the assistant is shown as unavailable and the rest of the application continues to work.
+An account with the `ADMIN` role can open the dashboard and choose **Ask assistant**. It answers questions about documented shop procedures, the current menu, prices, availability, daily activity and monthly sales. The server needs `OPENAI_API_KEY` in its Render environment settings and uses `OPENAI_MODEL=gpt-5.4-mini` by default. Keep the key on the server; it never belongs in a `VITE_` variable. Without a key the assistant is shown as unavailable and the rest of the application continues to work.
 
 The production path is:
 
 ```text
 Signed-in admin -> POST /api/admin/agent/brief { question }
-    -> admin agent service -> runAdminBriefAgent
-    -> get_shop_summary calls reportService.getSummary()
-    -> existing repository reads MongoDB
-    -> projectShopSummary removes private fields
-    -> model writes the briefing -> dashboard displays it
+    -> admin agent service -> runShopAssistantAgent
+    -> retrieve up to four matching shop reference notes
+    -> model answers from notes or requests live menu/report tools
+    -> permitted tools call existing services and project safe fields
+    -> model writes an answer with source references
+    -> dashboard displays the answer and retrieved references
 ```
 
-Read [admin-agent-routes.ts](../../src/routes/admin-agent-routes.ts) for session authentication, the `ADMIN` role check, request validation and the limit of five requests per admin every 15 minutes. Read [admin-agent-service.ts](../../src/services/admin-agent-service.ts) for the direct report read and the shared agent loop. The server already has database access, so this path does not need a stored shop password or a second HTTP login.
+Read [admin-agent-routes.ts](../../src/routes/admin-agent-routes.ts) for session authentication, the `ADMIN` role check, request validation and the limit of five requests per admin every 15 minutes. Read [admin-agent-service.ts](../../src/services/admin-agent-service.ts) for the service integration and [RAG.md](RAG.md) for the retrieval flow. The server already has database access, so this path does not need a stored shop password or a second HTTP login.
 
-`GET /api/admin/agent/status` returns whether the assistant is configured without calling OpenAI. A briefing is generated only after an admin submits a question. Each run makes at most two model requests and reads one report; there are no automatic retries or background briefings. Only one briefing runs at a time in this API process. These limits are held in memory and reset on restart; additional API instances would need a shared limiter. API credits are still required for each live model request.
+`GET /api/admin/agent/status` returns whether the assistant is configured without calling OpenAI. An answer is generated only after an admin submits a question. Each production run makes at most two model requests, with at most one call each to the menu and report tools in one tool round. A question answered fully by reference notes needs no live read. There are no automatic retries or background answers. Only one answer runs at a time in this API process. These limits are held in memory and reset on restart; additional API instances would need a shared limiter. API credits are still required for each live model request.
 
-The returned `generatedAt` is the report snapshot time when `usedShopData` is `true`; for an answer that does not read the report, it is the answer generation time. Briefings are not saved as conversation history. The terminal commands and their separate local `.env` file below continue to work unchanged.
+The returned `generatedAt` is the last live tool's snapshot time when `usedShopData` is `true`; for an answer using no live tool, it is the answer generation time. Answers are not saved as conversation history. **The terminal commands, separate local `.env` file and one-tool flow below continue to work unchanged.** Complete these first lessons before reading the expanded production implementation.
 
 ## Lesson 1: understand the parts
 
@@ -250,7 +251,7 @@ Keep the next lessons small:
 1. **Improve the briefing instructions.** Change the desired length or wording, then compare several questions against the same report. Learn which behavior comes from instructions and which is enforced by code.
 2. **Add a second read tool.** For example, a protected report of older pending orders with customer details excluded. Give it a distinct schema and validate its arguments. This would answer a question the current “created today” summary cannot.
 3. **Build a repeatable evaluation set.** Include no orders, partial stock lists, older completed orders and requests outside the agent's scope. Measure factual accuracy and whether the correct tool is used.
-4. **Add an admin UI.** Put the agent behind an authenticated server endpoint with request limits and loading/error states. Keep the model key on the server and reuse the signed-in user's authorization.
-5. **Consider a narrowly scoped write tool later.** First show the exact proposed change for staff confirmation, then enforce permission, validation, audit history and duplicate-request protection on the server. That is a separate lesson; this version only reads reports.
+4. **Follow the production RAG lesson.** Read [RAG.md](RAG.md) to see the existing admin UI, retrieval of reference notes, optional menu/report tools, and source references. The model key stays on the server and the API reuses the signed-in user's authorization.
+5. **Consider a narrowly scoped write tool later.** First show the exact proposed change for staff confirmation, then enforce permission, validation, audit history and duplicate-request protection on the server. That is a separate lesson; this terminal version only reads reports and the production assistant also remains read-only.
 
 For now, understanding one complete request-to-tool-to-answer cycle is the goal. The rest can grow from this working boundary.

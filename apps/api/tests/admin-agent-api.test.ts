@@ -187,7 +187,10 @@ describe("production admin agent API", () => {
   });
 
   it("reports missing server configuration safely and keeps health checks working", async () => {
-    const service = createAdminAgentService({ reportService: { getSummary: vi.fn() } });
+    const service = createAdminAgentService({
+      reportService: { getSummary: vi.fn() },
+      productService: { listPublic: vi.fn() },
+    });
     const app = createAgentApp(service);
     const status = await request(app)
       .get("/api/admin/agent/status")
@@ -205,6 +208,7 @@ describe("production admin agent API", () => {
   it("returns a safe provider failure response without exposing secrets", async () => {
     const service = createAdminAgentService({
       reportService: { getSummary: vi.fn() },
+      productService: { listPublic: vi.fn() },
       respond: vi.fn().mockRejectedValue(new Error("secret-api-key private-provider-body")),
     });
     const response = await request(createAgentApp(service))

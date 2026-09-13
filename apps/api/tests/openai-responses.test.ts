@@ -1,8 +1,37 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createOpenAiResponder, SUMMARY_TOOL } from "../src/agents/openai-responses.js";
+import {
+  SHOP_ASSISTANT_INSTRUCTIONS,
+  SHOP_ASSISTANT_TOOLS,
+} from "../src/agents/shop-assistant-instructions.js";
 
 describe("OpenAI Responses adapter", () => {
+  it("supports the production RAG instructions and tools without changing the lesson defaults", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ status: "completed", output: [] }));
+    const controller = new AbortController();
+    const respond = createOpenAiResponder({
+      apiKey: "test-key",
+      model: "test-model",
+      fetcher,
+      instructions: SHOP_ASSISTANT_INSTRUCTIONS,
+      tools: SHOP_ASSISTANT_TOOLS,
+      parallelToolCalls: true,
+      maxOutputTokens: 2200,
+    });
+    await respond({ input: [], toolChoice: "auto", signal: controller.signal });
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({
+      instructions: SHOP_ASSISTANT_INSTRUCTIONS,
+      tools: SHOP_ASSISTANT_TOOLS,
+      parallel_tool_calls: true,
+      max_output_tokens: 2200,
+      store: false,
+    });
+    controller.abort();
+    expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  });
   it("sends a bounded stateless tool request and preserves reasoning state for the loop", async () => {
     const output = [
       { type: "reasoning", id: "rs_test", encrypted_content: "opaque-state", summary: [] },
