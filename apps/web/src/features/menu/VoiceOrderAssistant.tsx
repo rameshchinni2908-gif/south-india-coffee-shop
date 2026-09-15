@@ -181,6 +181,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
   const { addItem, items } = useCart();
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const manualStopRef = useRef(false);
+  const microphoneGrantedRef = useRef(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -207,6 +208,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach((track) => track.stop());
+        microphoneGrantedRef.current = true;
       } catch (error) {
         const errorName = error instanceof DOMException ? error.name : "";
         setMessage(
@@ -224,7 +226,8 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       );
       return;
     }
-    recognition.lang = "en-IN";
+    const browserLanguage = navigator.language?.toLowerCase();
+    recognition.lang = browserLanguage?.startsWith("en") ? navigator.language : "en-IN";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.onresult = (event) => {
@@ -307,7 +310,9 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       if (manualStopRef.current || event.error === "aborted") return;
       setMessage(
         event.error === "not-allowed" || event.error === "service-not-allowed"
-          ? "Microphone not allowed. Please allow microphone access and try again."
+          ? microphoneGrantedRef.current
+            ? "Voice recognition is unavailable right now. Please reload the page and try again."
+            : "Microphone not allowed. Please allow microphone access and try again."
           : event.error === "no-speech"
             ? "No speech was detected. Tap the microphone and speak your order clearly."
             : "Voice input is temporarily unavailable. Please try again or use the menu buttons.",
