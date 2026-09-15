@@ -80,7 +80,9 @@ export const MenuPage = () => {
             onClear={clearFilters}
           />
 
-          <VoiceOrderAssistant products={voiceProductsQuery.data?.products ?? []} />
+          <VoiceOrderAssistant
+            products={voiceProductsQuery.data?.products ?? productsQuery.data?.products ?? []}
+          />
 
           {categoriesQuery.isError && (
             <Alert severity="warning" sx={{ mt: 2 }}>

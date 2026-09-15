@@ -54,6 +54,8 @@ const quantityWords: Record<string, number> = {
 const normalise = (value: string) =>
   value
     .toLowerCase()
+    .replace(/\bcopy\b/g, "coffee")
+    .replace(/\bchai\b/g, "tea")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
@@ -209,7 +211,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         const errorName = error instanceof DOMException ? error.name : "";
         setMessage(
           errorName === "NotAllowedError"
-            ? "Microphone access is blocked for this site. Click the lock icon in Chrome’s address bar, allow Microphone, reload, and try again."
+            ? "Microphone access is blocked. In Chrome tap the icon beside the address, open Permissions, allow Microphone, and reload. On Android also open Settings → Apps → Chrome → Permissions → Microphone → Allow."
             : "Chrome could not access a microphone. Check that a microphone is connected and not being used by another app.",
         );
         return;
