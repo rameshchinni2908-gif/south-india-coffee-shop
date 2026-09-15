@@ -11,6 +11,8 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "CANCELLED",
 ];
 
+export const ONGOING_ORDER_STATUSES: OrderStatus[] = ["PLACED", "CONFIRMED", "PREPARING", "READY"];
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PLACED: "Placed",
   CONFIRMED: "Confirmed",

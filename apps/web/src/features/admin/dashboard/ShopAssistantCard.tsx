@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Fragment } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -50,6 +51,22 @@ const EXAMPLE_QUESTIONS = [
     question: "How are today's and this month's sales doing?",
   },
 ] as const;
+
+const renderAnswer = (answer: string) =>
+  answer.split("\n").map((line, lineIndex, lines) => (
+    <Fragment key={`line-${lineIndex}`}>
+      {line
+        .split(/(\*\*[^*]+\*\*)/g)
+        .map((part, partIndex) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={`part-${partIndex}`}>{part.slice(2, -2)}</strong>
+          ) : (
+            <Fragment key={`part-${partIndex}`}>{part}</Fragment>
+          ),
+        )}
+      {lineIndex < lines.length - 1 && <br />}
+    </Fragment>
+  ));
 
 export const ShopAssistantCard = () => {
   const statusQuery = useQuery({
@@ -263,7 +280,7 @@ export const ShopAssistantCard = () => {
                     component="div"
                     sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.8 }}
                   >
-                    {briefing.answer}
+                    {renderAnswer(briefing.answer)}
                   </Typography>
                   {sources && sources.length > 0 && (
                     <Accordion

@@ -33,6 +33,10 @@ const report: ShopAssistantSnapshot = {
       CANCELLED: 0,
     },
   },
+  ongoingOrders: {
+    total: 1,
+    statusCounts: { PLACED: 1, CONFIRMED: 0, PREPARING: 0, READY: 0 },
+  },
   completedSalesUpdatedToday: {
     orderCount: 0,
     salesTotalPaise: 0,

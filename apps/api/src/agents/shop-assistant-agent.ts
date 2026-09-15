@@ -112,7 +112,7 @@ export const runShopAssistantAgent = async (
           id: "R1",
           title: "Live sales, order activity and low-stock report",
           kind: "report",
-          excerpt: `${report.ordersCreatedToday.total} orders created today. Completed sales updated today: ${report.completedSalesUpdatedToday.salesTotalFormatted}. Completed sales updated this month: ${report.completedSalesUpdatedThisMonth.salesTotalFormatted}. Low-stock variants: ${report.lowStock.totalVariants}. Sales are not profit.`,
+          excerpt: `${report.ongoingOrders.total} ongoing orders need staff action. ${report.ordersCreatedToday.total} orders were created today. Completed sales updated today: ${report.completedSalesUpdatedToday.salesTotalFormatted}. Completed sales updated this month: ${report.completedSalesUpdatedThisMonth.salesTotalFormatted}. Low-stock variants: ${report.lowStock.totalVariants}. Sales are not profit.`,
         };
       } else {
         const menu = await readBeforeDeadline(getShopMenu, signal);

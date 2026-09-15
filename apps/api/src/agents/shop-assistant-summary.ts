@@ -10,6 +10,7 @@ const monthlySummarySchema = z.object({
     itemsSold: count,
   }),
 });
+const ONGOING_STATUSES = ["PLACED", "CONFIRMED", "PREPARING", "READY"] as const;
 
 export const projectShopAssistantSummary = (input: unknown) => {
   const summary = projectShopSummary(input);
@@ -20,6 +21,18 @@ export const projectShopAssistantSummary = (input: unknown) => {
 
   return {
     ...summary,
+    ongoingOrders: {
+      total: ONGOING_STATUSES.reduce(
+        (total, status) => total + summary.ordersCreatedToday.currentStatusCounts[status],
+        0,
+      ),
+      statusCounts: Object.fromEntries(
+        ONGOING_STATUSES.map((status) => [
+          status,
+          summary.ordersCreatedToday.currentStatusCounts[status],
+        ]),
+      ),
+    },
     completedSalesUpdatedThisMonth: {
       orderCount: result.data.month.orderCount,
       salesTotalPaise: result.data.month.salesTotal,

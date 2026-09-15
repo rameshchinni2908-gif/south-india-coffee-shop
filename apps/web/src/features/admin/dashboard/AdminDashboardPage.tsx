@@ -33,8 +33,8 @@ import { formatRupees } from "../../../lib/currency.js";
 import type { StaffUser } from "../../../types/auth.js";
 import { formatShopDateTime } from "../../orders/order-format.js";
 import {
-  ORDER_STATUSES,
   ORDER_STATUS_LABELS,
+  ONGOING_ORDER_STATUSES,
   type OrderStatus,
 } from "../../orders/order-status.js";
 import { dashboardQuery } from "./dashboard-query.js";
@@ -178,9 +178,14 @@ export const AdminDashboardPage = () => {
               }}
             >
               <MetricCard
-                label="Today's orders"
-                value={String(summary.today.totalOrders)}
-                detail={`${summary.today.itemsSold} item(s) sold in completed orders`}
+                label="Ongoing orders"
+                value={String(
+                  ONGOING_ORDER_STATUSES.reduce(
+                    (total, status) => total + summary.today.statusCounts[status],
+                    0,
+                  ),
+                )}
+                detail="Orders still needing staff action"
                 icon={<ReceiptLongOutlinedIcon />}
               />
               <MetricCard
@@ -211,10 +216,10 @@ export const AdminDashboardPage = () => {
               >
                 <Box>
                   <Typography component="h2" variant="h5">
-                    Today's order activity
+                    Ongoing orders
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    New orders grouped by their current status
+                    Orders still moving through the pickup workflow
                   </Typography>
                 </Box>
                 <Chip label={summary.timezone} variant="outlined" size="small" />
@@ -227,7 +232,7 @@ export const AdminDashboardPage = () => {
                   mt: 3,
                 }}
               >
-                {ORDER_STATUSES.map((status) => (
+                {ONGOING_ORDER_STATUSES.map((status) => (
                   <Box
                     key={status}
                     sx={{ p: 2, borderRadius: 3, bgcolor: "rgba(111, 50, 25, 0.045)" }}

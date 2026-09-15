@@ -43,6 +43,10 @@ describe("shop assistant monthly summary", () => {
 
     expect(snapshot).toEqual({
       ...projectShopSummary(input),
+      ongoingOrders: {
+        total: 1,
+        statusCounts: { PLACED: 1, CONFIRMED: 0, PREPARING: 0, READY: 0 },
+      },
       completedSalesUpdatedThisMonth: {
         orderCount: 30,
         salesTotalPaise: 1234550,
@@ -52,6 +56,10 @@ describe("shop assistant monthly summary", () => {
     });
     expect(snapshot.ordersCreatedToday.total).toBe(3);
     expect(snapshot.ordersCreatedToday.currentStatusCounts.COMPLETED).toBe(1);
+    expect(snapshot.ongoingOrders).toEqual({
+      total: 1,
+      statusCounts: { PLACED: 1, CONFIRMED: 0, PREPARING: 0, READY: 0 },
+    });
     expect(snapshot.completedSalesUpdatedToday.orderCount).toBe(2);
     expect(projectShopSummary(input)).not.toHaveProperty("completedSalesUpdatedThisMonth");
     expect(JSON.stringify(snapshot)).not.toMatch(

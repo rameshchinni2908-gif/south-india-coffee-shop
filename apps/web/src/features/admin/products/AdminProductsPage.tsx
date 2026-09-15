@@ -227,6 +227,9 @@ export const AdminProductsPage = () => {
                 const sellableVariants = product.variants.filter(
                   (variant) => variant.isAvailable && variant.stockQuantity > 0,
                 ).length;
+                const hasOutOfStock = product.variants.some(
+                  (variant) => variant.stockQuantity === 0,
+                );
                 const hasLowStock = product.variants.some(
                   (variant) => variant.stockQuantity <= product.lowStockThreshold,
                 );
@@ -262,6 +265,9 @@ export const AdminProductsPage = () => {
                             color={product.isActive ? "success" : "default"}
                             label={product.isActive ? "Active" : "Inactive"}
                           />
+                          {hasOutOfStock && (
+                            <Chip size="small" color="error" label="Out of stock" />
+                          )}
                           {hasLowStock && <Chip size="small" color="warning" label="Low stock" />}
                         </Stack>
                       </Stack>
@@ -290,9 +296,17 @@ export const AdminProductsPage = () => {
                             <Typography variant="body2">
                               {variant.name} · {variant.sku}
                             </Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 750 }}>
-                              {variant.stockQuantity} in stock
-                            </Typography>
+                            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                              <Typography variant="body2" sx={{ fontWeight: 750 }}>
+                                {variant.stockQuantity} in stock
+                              </Typography>
+                              {variant.stockQuantity === 0 && (
+                                <Chip size="small" color="error" label="Out of stock" />
+                              )}
+                              {variant.stockQuantity <= product.lowStockThreshold && (
+                                <Chip size="small" color="warning" label="Low stock" />
+                              )}
+                            </Stack>
                           </Stack>
                         ))}
                       </Stack>

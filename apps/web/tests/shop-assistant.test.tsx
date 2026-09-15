@@ -222,6 +222,23 @@ describe("shop assistant", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
+  it("renders markdown-style bold emphasis as accessible strong text", async () => {
+    const answer = "**Coffee powder** is low stock.";
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+        .mockResolvedValueOnce(response({ briefing: { ...briefing, answer } })),
+    );
+    renderAssistant();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ask assistant" }));
+
+    expect((await screen.findByText("Coffee powder")).tagName).toBe("STRONG");
+    expect(screen.queryByText(answer)).not.toBeInTheDocument();
+  });
+
   it("expands retrieved references as plain text and clears them when choosing another question", async () => {
     const title = '<img src="invalid" onerror="alert(1)"> Pickup policy';
     const excerpt = '<a href="https://invalid.example">Pay at the shop</a>';
