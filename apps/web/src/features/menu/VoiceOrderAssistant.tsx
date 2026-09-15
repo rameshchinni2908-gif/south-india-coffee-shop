@@ -181,7 +181,6 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
   const { addItem, items } = useCart();
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const manualStopRef = useRef(false);
-  const microphoneGrantedRef = useRef(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -197,28 +196,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
 
   useEffect(() => () => recognitionRef.current?.stop(), []);
 
-  const startListening = async () => {
-    const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
-    if (!window.isSecureContext && !isLocalhost) {
-      setMessage("Voice ordering requires HTTPS. Open the deployed HTTPS address, then try again.");
-      return;
-    }
-    if (navigator.mediaDevices?.getUserMedia) {
-      setMessage("Requesting microphone access…");
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-        microphoneGrantedRef.current = true;
-      } catch (error) {
-        const errorName = error instanceof DOMException ? error.name : "";
-        setMessage(
-          errorName === "NotAllowedError"
-            ? "Microphone not allowed. Please allow microphone access and try again."
-            : "Microphone could not be accessed. Check your microphone and try again.",
-        );
-        return;
-      }
-    }
+  const startListening = () => {
     const recognition = getRecognition();
     if (!recognition) {
       setMessage(
@@ -310,9 +288,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       if (manualStopRef.current || event.error === "aborted") return;
       setMessage(
         event.error === "not-allowed" || event.error === "service-not-allowed"
-          ? microphoneGrantedRef.current
-            ? "Voice recognition is unavailable right now. Please reload the page and try again."
-            : "Microphone not allowed. Please allow microphone access and try again."
+          ? "Microphone not allowed. Please allow microphone access and try again."
           : event.error === "no-speech"
             ? "No speech was detected. Tap the microphone and speak your order clearly."
             : "Voice input is temporarily unavailable. Please try again or use the menu buttons.",
