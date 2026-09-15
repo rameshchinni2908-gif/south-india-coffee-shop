@@ -123,7 +123,32 @@ Add retrieval cases to [shop-knowledge-retrieval.test.ts](../../tests/shop-knowl
 
 The documents are TypeScript data compiled with the API. After changing them, run the normal checks and rebuild/deploy the Render API. There is no upload or reindexing step, and the frontend does not need the knowledge file.
 
-## 7. Start testing without a paid request
+## 7. Try the live reads through MCP
+
+This repository also includes a small read-only MCP server. It exposes the same two safe projections used by the assistant: `get_shop_menu` and `get_shop_summary`. MCP is a tool-sharing protocol, separate from RAG: RAG supplies reference notes, while MCP makes live shop tools reusable from another MCP-compatible application.
+
+Run it locally with the API environment file:
+
+```powershell
+npm run agent:mcp --workspace @south-india-coffee-shop/api
+```
+
+The server uses JSON-RPC messages over stdin/stdout. It has no write tools, rejects tool arguments, and returns only the existing safe menu/report projections. A local MCP client can launch it with an equivalent configuration:
+
+```json
+{
+  "mcpServers": {
+    "jrg-shop": {
+      "command": "npm.cmd",
+      "args": ["run", "agent:mcp", "--workspace", "@south-india-coffee-shop/api"]
+    }
+  }
+}
+```
+
+The production dashboard continues using its in-process functions. This local adapter is an intentionally safe first step before exposing an authenticated MCP URL publicly. A remote MCP deployment needs HTTPS, a separate bearer token or OAuth flow, request limits and an approval policy.
+
+## 8. Start testing without a paid request
 
 From the repository root, run:
 

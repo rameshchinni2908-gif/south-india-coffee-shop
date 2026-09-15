@@ -8,6 +8,7 @@
   },
   "scripts": {
     "agent:brief": "tsx src/scripts/admin-agent.ts",
+    "agent:mcp": "tsx src/scripts/shop-mcp.ts",
     "dev": "tsx watch src/server.ts",
     "seed": "npm run seed:catalog && npm run seed:admin",
     "seed:prod": "node dist/scripts/seed-catalog.js && node dist/scripts/seed-admin.js",
