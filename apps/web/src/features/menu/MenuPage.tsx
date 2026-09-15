@@ -8,7 +8,7 @@ import { MenuFilters } from "./MenuFilters.js";
 import { MenuHero } from "./MenuHero.js";
 import { getMenuFilterForm, type MenuFilterForm } from "./menu-filter-schema.js";
 import { useCategories, useProducts } from "./menu-queries.js";
-import { getMenuProductFilters } from "./menu-query-options.js";
+import { getMenuProductFilters, voiceOrderProductFilters } from "./menu-query-options.js";
 import { MenuEmptyState, MenuErrorState, MenuLoadingState } from "./MenuStates.js";
 import { ProductCard } from "./ProductCard.js";
 import { VoiceOrderAssistant } from "./VoiceOrderAssistant.js";
@@ -22,6 +22,7 @@ export const MenuPage = () => {
   const categoriesQuery = useCategories();
   const productFilters = useMemo(() => getMenuProductFilters(searchParams), [searchParams]);
   const productsQuery = useProducts(productFilters);
+  const voiceProductsQuery = useProducts(voiceOrderProductFilters);
   const categories = categoriesQuery.data ?? [];
 
   const applyFilters = (values: MenuFilterForm) => {
@@ -79,7 +80,7 @@ export const MenuPage = () => {
             onClear={clearFilters}
           />
 
-          <VoiceOrderAssistant products={productsQuery.data?.products ?? []} />
+          <VoiceOrderAssistant products={voiceProductsQuery.data?.products ?? []} />
 
           {categoriesQuery.isError && (
             <Alert severity="warning" sx={{ mt: 2 }}>

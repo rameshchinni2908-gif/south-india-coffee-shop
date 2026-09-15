@@ -1,5 +1,6 @@
 import MicRoundedIcon from "@mui/icons-material/MicRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
+import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -64,59 +65,114 @@ const readQuantity = (text: string): number => {
   return Math.min(Number(token) || quantityWords[token.toLowerCase()] || 1, MAX_CART_ITEM_QUANTITY);
 };
 
-const findVoiceItems = (transcript: string, products: Product[]): NewCartItem[] => {
-  const spoken = normalise(transcript);
-  const matches: Array<{ start: number; item: NewCartItem; quantity: number }> = [];
+interface VoiceOrderResult {
+  items: NewCartItem[];
+  unavailable: string[];
+}
 
-  for (const product of products) {
+const findVoiceOrder = (transcript: string, products: Product[]): VoiceOrderResult => {
+  const segments = normalise(transcript)
+    .split(/\s+(?:and|plus)\s+|,\s*/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const matches: Array<{ start: number; item: NewCartItem; quantity: number }> = [];
+  const unavailable: string[] = [];
+
+  for (const [segmentIndex, segment] of segments.entries()) {
     let matched = false;
-    for (const variant of product.variants) {
-      if (!variant.isAvailable || variant.stockQuantity === 0) continue;
-      const phrase = normalise(`${product.name} ${variant.name}`);
-      const start = spoken.indexOf(phrase);
-      if (start < 0) continue;
-      matches.push({
-        start,
-        quantity: readQuantity(spoken.slice(Math.max(0, start - 18), start)),
-        item: {
-          productId: product.id,
-          productName: product.name,
-          variantId: variant.id,
-          variantName: variant.name,
-          sku: variant.sku,
-          unitPrice: variant.price,
-          stockQuantity: variant.stockQuantity,
-        },
-      });
+    for (const product of products) {
+      for (const variant of product.variants) {
+        const phrase = normalise(`${product.name} ${variant.name}`);
+        const start = segment.indexOf(phrase);
+        if (start < 0) continue;
+        const quantity = readQuantity(segment.slice(Math.max(0, start - 18), start));
+        if (!variant.isAvailable || variant.stockQuantity === 0) {
+          unavailable.push(`${product.name} ${variant.name}`);
+        } else {
+          matches.push({
+            start: segmentIndex + start,
+            quantity,
+            item: {
+              productId: product.id,
+              productName: product.name,
+              variantId: variant.id,
+              variantName: variant.name,
+              sku: variant.sku,
+              unitPrice: variant.price,
+              stockQuantity: variant.stockQuantity,
+            },
+          });
+        }
+        matched = true;
+        break;
+      }
+      if (matched) break;
+    }
+    if (matched) continue;
+
+    for (const product of products) {
+      const productPhrase = normalise(product.name);
+      const productStart = segment.indexOf(productPhrase);
+      if (productStart < 0) continue;
+      const requestedVariant = product.variants.find((variant) =>
+        segment.includes(normalise(variant.name)),
+      );
+      const variant = requestedVariant ?? product.variants[0];
+      if (!variant) break;
+      const requestedSize = segment.match(/\b(regular|large|small|medium)\b/i)?.[1];
+      if (!requestedVariant && requestedSize) {
+        unavailable.push(`${product.name} ${requestedSize}`);
+        matched = true;
+        break;
+      }
+      const quantity = readQuantity(segment.slice(Math.max(0, productStart - 18), productStart));
+      if (!variant.isAvailable || variant.stockQuantity === 0) {
+        unavailable.push(`${product.name} ${variant.name}`);
+      } else {
+        matches.push({
+          start: segmentIndex + productStart,
+          quantity,
+          item: {
+            productId: product.id,
+            productName: product.name,
+            variantId: variant.id,
+            variantName: variant.name,
+            sku: variant.sku,
+            unitPrice: variant.price,
+            stockQuantity: variant.stockQuantity,
+          },
+        });
+      }
       matched = true;
       break;
     }
-    if (matched) continue;
-    const productPhrase = normalise(product.name);
-    const productStart = spoken.indexOf(productPhrase);
-    const variant = product.variants.find(
-      (candidate) => candidate.isAvailable && candidate.stockQuantity > 0,
-    );
-    if (productStart >= 0 && variant) {
-      matches.push({
-        start: productStart,
-        quantity: readQuantity(spoken.slice(Math.max(0, productStart - 18), productStart)),
-        item: {
-          productId: product.id,
-          productName: product.name,
-          variantId: variant.id,
-          variantName: variant.name,
-          sku: variant.sku,
-          unitPrice: variant.price,
-          stockQuantity: variant.stockQuantity,
-        },
-      });
+    if (!matched) {
+      const cleaned = segment
+        .replace(/^(please\s+)?(?:order|get|give me|add)\s+/i, "")
+        .replace(/^(\d+|a|an|one|two|three|four|five)\s+/i, "")
+        .trim();
+      if (cleaned) unavailable.push(cleaned);
     }
   }
 
-  return matches
-    .sort((left, right) => left.start - right.start)
-    .flatMap(({ item, quantity }) => Array.from({ length: quantity }, () => item));
+  return {
+    items: matches
+      .sort((left, right) => left.start - right.start)
+      .flatMap(({ item, quantity }) => Array.from({ length: quantity }, () => item)),
+    unavailable,
+  };
+};
+
+const findVoiceItems = (transcript: string, products: Product[]): NewCartItem[] =>
+  findVoiceOrder(transcript, products).items;
+
+const speak = (text: string) => {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-IN";
+  utterance.rate = 0.95;
+  window.speechSynthesis.speak(utterance);
 };
 
 export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
@@ -126,6 +182,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [lastSpoken, setLastSpoken] = useState<string | null>(null);
   const supported = useMemo(() => {
     if (typeof window === "undefined") return false;
     const speechWindow = window as typeof window & {
@@ -151,7 +208,20 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
     recognition.onresult = (event) => {
       const spoken = event.results[0]?.[0]?.transcript?.trim() ?? "";
       setTranscript(spoken);
-      const voiceItems = findVoiceItems(spoken, products);
+      const result = findVoiceOrder(spoken, products);
+      const voiceItems = result.items;
+      const unavailableMessage = result.unavailable.length
+        ? `Not available on the menu: ${result.unavailable.join(", ")}.`
+        : "";
+      if (voiceItems.length === 0) {
+        const response =
+          unavailableMessage ||
+          "I could not match that to the menu. Please try a menu item and size.";
+        setMessage(response);
+        setLastSpoken(response);
+        speak(response);
+        return;
+      }
       if (voiceItems.length === 0) {
         setMessage(
           "I could not match that to an available size. Try saying ‘two filter coffee large’.",
@@ -178,16 +248,17 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       const summary = Object.entries(grouped)
         .map(([name, count]) => `${count} ${name}`)
         .join(", ");
-      setMessage(
+      const response = [
         added > 0
-          ? `Added ${summary}. Review your cart, then enter pickup details to place the order.`
+          ? `Added ${summary} to your cart. Review it before checkout.`
           : "Those items are already at their available quantity in your cart.",
-      );
-      window.speechSynthesis?.speak(
-        new SpeechSynthesisUtterance(
-          added > 0 ? `Added ${summary} to your cart.` : "Those items are already in your cart.",
-        ),
-      );
+        unavailableMessage,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      setMessage(response);
+      setLastSpoken(response);
+      speak(response);
     };
     recognition.onstart = () => {
       setListening(true);
@@ -233,6 +304,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         p: { xs: 2, sm: 2.5 },
         borderColor: "rgba(111,50,25,.18)",
         background: "linear-gradient(135deg, rgba(255,253,248,.98), rgba(248,234,214,.7))",
+        scrollMarginTop: { xs: 76, sm: 96 },
       }}
     >
       <Stack
@@ -259,6 +331,12 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
           {listening ? "Stop listening" : "Start voice order"}
         </Button>
       </Stack>
+      {!supported && (
+        <Alert severity="info" sx={{ mt: 1.5 }}>
+          Voice ordering needs a browser with speech recognition, such as Chrome on Android. You can
+          still use the menu buttons on this device.
+        </Alert>
+      )}
       {transcript && (
         <Typography variant="body2" sx={{ mt: 1.5, fontStyle: "italic" }}>
           “{transcript}”
@@ -271,6 +349,17 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         >
           {message}
         </Alert>
+      )}
+      {lastSpoken && (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<VolumeUpRoundedIcon />}
+          onClick={() => speak(lastSpoken)}
+          sx={{ alignSelf: "flex-start", mt: 0.5 }}
+        >
+          Hear confirmation again
+        </Button>
       )}
       {items.length > 0 && (
         <Stack

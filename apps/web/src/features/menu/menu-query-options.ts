@@ -22,6 +22,14 @@ export const getMenuProductFilters = (searchParams: URLSearchParams): ProductFil
   };
 };
 
+export const voiceOrderProductFilters: ProductFilters = {
+  page: 1,
+  limit: 100,
+  available: "all",
+  sortBy: "name",
+  sortOrder: "asc",
+};
+
 export const categoryQueryOptions = () =>
   queryOptions({
     queryKey: ["categories"],
