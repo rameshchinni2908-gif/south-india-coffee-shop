@@ -47,6 +47,14 @@ const environmentSchema = z.object({
     .optional()
     .transform((value) => value || undefined),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.4-mini"),
+  MCP_SERVER_TOKEN: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .refine(
+      (value) => value === undefined || value.length >= 32,
+      "MCP_SERVER_TOKEN must contain at least 32 characters",
+    ),
   GAME_ENABLED: z
     .enum(["true", "false"])
     .default("false")

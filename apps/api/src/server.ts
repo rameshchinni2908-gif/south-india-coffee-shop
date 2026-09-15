@@ -130,6 +130,9 @@ const startServer = async (): Promise<void> => {
     reportService,
     staffAccountService,
     adminAgentService,
+    ...(environment.MCP_SERVER_TOKEN
+      ? { mcp: { productService, reportService, token: environment.MCP_SERVER_TOKEN } }
+      : {}),
     ...(gameModule ? { gameRouter: gameModule.router } : {}),
     ...(arenaModule ? { arenaRouter: arenaModule.router } : {}),
     ...(sipModule ? { sipRouter: sipModule.router } : {}),

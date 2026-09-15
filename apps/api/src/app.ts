@@ -18,6 +18,7 @@ import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
 import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
+import { createMcpRouter } from "./routes/mcp-route.js";
 import type { AuthService } from "./services/auth-service.js";
 import type { AdminAgentService } from "./services/admin-agent-service.js";
 import type { CategoryService } from "./services/category-service.js";
@@ -38,6 +39,11 @@ interface CreateAppOptions {
   catalogServices?: CatalogServices;
   orderService?: OrderService;
   reportService?: ReportService;
+  mcp?: {
+    productService: Pick<ProductService, "listPublic">;
+    reportService: ReportService;
+    token: string;
+  };
   adminAgentService?: AdminAgentService;
   staffAccountService?: StaffAccountService;
   gameRouter?: Router;
@@ -54,6 +60,7 @@ export const createApp = ({
   catalogServices,
   orderService,
   reportService,
+  mcp,
   adminAgentService,
   staffAccountService,
   gameRouter,
@@ -125,6 +132,10 @@ export const createApp = ({
 
   if (adminAgentService) {
     app.use("/api/admin/agent", createAdminAgentRouter(authService, adminAgentService, clientUrl));
+  }
+
+  if (mcp) {
+    app.use("/api/mcp", createMcpRouter(mcp));
   }
 
   // Mounted only when GAME_ENABLED, so the Kaapi Karts module can ship dark.

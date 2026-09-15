@@ -53,6 +53,17 @@ Knowledge changes require an API build and deployment; there is no file upload,
 embedding service, or model training in this implementation. The original
 `npm run agent:brief` terminal lesson retains its one-tool daily-report flow.
 
+## Read-only MCP endpoint
+
+The API can optionally expose the same menu and report tools through `POST
+/api/mcp` for MCP-compatible clients. Set a random 32+ character
+`MCP_SERVER_TOKEN` in the Render API environment to enable it; without that
+variable the route is not mounted. Requests must send `Authorization: Bearer
+<token>`. The endpoint is read-only and rejects tool arguments. See the [MCP
+walkthrough](apps/api/examples/admin-agent/RAG.md#try-the-live-reads-through-mcp)
+for local stdio usage and the remaining steps before connecting a remote
+Responses API agent.
+
 Generation runs only when requested, with no automatic retry. A run makes at
 most two model requests and one round of live tools: at most one menu read and
 one report read. Reference-only questions can finish with one model request and

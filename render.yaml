@@ -35,6 +35,9 @@ services:
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      # Optional bearer token for the read-only /api/mcp endpoint.
+      - key: MCP_SERVER_TOKEN
+        sync: false
       # Kaapi Karts mini-game. Flip GAME_ENABLED in the Render dashboard to
       # release it; the socket server only starts when it is true.
       - key: GAME_ENABLED
