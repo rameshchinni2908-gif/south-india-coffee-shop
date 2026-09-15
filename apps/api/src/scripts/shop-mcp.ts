@@ -1,6 +1,5 @@
-import "dotenv/config";
-
 import { createInterface } from "node:readline";
+import { config as loadDotenv } from "dotenv";
 
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "../config/database.js";
 import { loadEnvironment } from "../config/environment.js";
@@ -59,6 +58,7 @@ const emptyArguments = (params: Record<string, unknown> | undefined): boolean =>
 };
 
 const start = async (): Promise<void> => {
+  loadDotenv({ path: new URL("../../.env", import.meta.url) });
   const environment = loadEnvironment();
   configureDatabaseDns(environment.MONGODB_DNS_SERVERS);
   await connectDatabase(environment.MONGODB_URI);
