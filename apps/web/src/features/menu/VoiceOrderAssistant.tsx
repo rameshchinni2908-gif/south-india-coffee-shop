@@ -211,8 +211,8 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         const errorName = error instanceof DOMException ? error.name : "";
         setMessage(
           errorName === "NotAllowedError"
-            ? "Microphone access is blocked. In Chrome tap the icon beside the address, open Permissions, allow Microphone, and reload. On Android also open Settings → Apps → Chrome → Permissions → Microphone → Allow."
-            : "Chrome could not access a microphone. Check that a microphone is connected and not being used by another app.",
+            ? "Microphone not allowed. Please allow microphone access and try again."
+            : "Microphone could not be accessed. Check your microphone and try again.",
         );
         return;
       }
@@ -251,18 +251,36 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         return;
       }
       let added = 0;
-      const addedByVariant = new Map<string, number>();
+      const addedItems: NewCartItem[] = [];
+      const requestedByVariant = new Map<string, { item: NewCartItem; quantity: number }>();
       for (const item of voiceItems) {
+        const request = requestedByVariant.get(item.variantId);
+        if (request) request.quantity += 1;
+        else requestedByVariant.set(item.variantId, { item, quantity: 1 });
+      }
+      const validationMessages: string[] = [];
+      for (const { item, quantity } of requestedByVariant.values()) {
         const current =
           items.find((cartItem) => cartItem.variantId === item.variantId)?.quantity ?? 0;
-        const alreadyAdded = addedByVariant.get(item.variantId) ?? 0;
-        if (current + alreadyAdded < Math.min(item.stockQuantity, MAX_CART_ITEM_QUANTITY)) {
+        const availableToAdd = Math.max(
+          0,
+          Math.min(item.stockQuantity, MAX_CART_ITEM_QUANTITY) - current,
+        );
+        if (quantity > availableToAdd) {
+          validationMessages.push(
+            availableToAdd > 0
+              ? `Only ${availableToAdd} more ${item.productName} ${item.variantName} can be added.`
+              : `${item.productName} ${item.variantName} is already at its available quantity in your cart.`,
+          );
+          continue;
+        }
+        for (let index = 0; index < quantity; index += 1) {
           addItem(item);
+          addedItems.push(item);
           added += 1;
-          addedByVariant.set(item.variantId, alreadyAdded + 1);
         }
       }
-      const grouped = voiceItems.reduce<Record<string, number>>((result, item) => {
+      const grouped = addedItems.reduce<Record<string, number>>((result, item) => {
         const key = `${item.productName} ${item.variantName}`;
         result[key] = (result[key] ?? 0) + 1;
         return result;
@@ -271,10 +289,9 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         .map(([name, count]) => `${count} ${name}`)
         .join(", ");
       const response = [
-        added > 0
-          ? `Added ${summary} to your cart. Review it before checkout.`
-          : "Those items are already at their available quantity in your cart.",
+        added > 0 ? `Added ${summary} to your cart. Review it before checkout.` : "",
         unavailableMessage,
+        ...validationMessages,
       ]
         .filter(Boolean)
         .join(" ");
@@ -290,7 +307,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       if (manualStopRef.current || event.error === "aborted") return;
       setMessage(
         event.error === "not-allowed" || event.error === "service-not-allowed"
-          ? "Chrome denied microphone access for this site. Click the lock icon in the address bar, set Microphone to Allow, reload the page, and try again."
+          ? "Microphone not allowed. Please allow microphone access and try again."
           : event.error === "no-speech"
             ? "No speech was detected. Tap the microphone and speak your order clearly."
             : "Voice input is temporarily unavailable. Please try again or use the menu buttons.",
