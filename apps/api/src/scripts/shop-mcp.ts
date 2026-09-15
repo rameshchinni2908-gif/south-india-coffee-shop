@@ -62,6 +62,7 @@ const start = async (): Promise<void> => {
   const environment = loadEnvironment();
   configureDatabaseDns(environment.MONGODB_DNS_SERVERS);
   await connectDatabase(environment.MONGODB_URI);
+  process.stderr.write("JRG shop MCP server ready; waiting for an MCP client.\n");
 
   const categoryRepository = new MongooseCategoryRepository();
   const productService = createProductService(new MongooseProductRepository(), categoryRepository);
