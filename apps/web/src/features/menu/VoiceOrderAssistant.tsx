@@ -194,7 +194,27 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
 
   useEffect(() => () => recognitionRef.current?.stop(), []);
 
-  const startListening = () => {
+  const startListening = async () => {
+    const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+    if (!window.isSecureContext && !isLocalhost) {
+      setMessage("Voice ordering requires HTTPS. Open the deployed HTTPS address, then try again.");
+      return;
+    }
+    if (navigator.mediaDevices?.getUserMedia) {
+      setMessage("Requesting microphone access…");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        const errorName = error instanceof DOMException ? error.name : "";
+        setMessage(
+          errorName === "NotAllowedError"
+            ? "Microphone access is blocked for this site. Click the lock icon in Chrome’s address bar, allow Microphone, reload, and try again."
+            : "Chrome could not access a microphone. Check that a microphone is connected and not being used by another app.",
+        );
+        return;
+      }
+    }
     const recognition = getRecognition();
     if (!recognition) {
       setMessage(
@@ -268,7 +288,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
       if (manualStopRef.current || event.error === "aborted") return;
       setMessage(
         event.error === "not-allowed" || event.error === "service-not-allowed"
-          ? "Microphone access is blocked. Allow microphone access in your browser, then try again."
+          ? "Chrome denied microphone access for this site. Click the lock icon in the address bar, set Microphone to Allow, reload the page, and try again."
           : event.error === "no-speech"
             ? "No speech was detected. Tap the microphone and speak your order clearly."
             : "Voice input is temporarily unavailable. Please try again or use the menu buttons.",
@@ -280,7 +300,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
     setMessage(
       "Listening… Say items and quantities, for example: two filter coffee large and one masala tea.",
     );
-    setListening(true);
+    setListening(false);
     try {
       recognition.start();
     } catch {
