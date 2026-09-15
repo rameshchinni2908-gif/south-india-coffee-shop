@@ -1,3 +1,4 @@
+import MicRoundedIcon from "@mui/icons-material/MicRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import SportsEsportsOutlinedIcon from "@mui/icons-material/SportsEsportsOutlined";
@@ -41,6 +42,29 @@ export const SiteHeader = () => {
               display: { xs: "none", sm: "flex" },
             }}
           />
+          <Button
+            component="a"
+            href="/#voice-order"
+            color="inherit"
+            startIcon={<MicRoundedIcon />}
+            sx={{ ml: 1.5, display: { xs: "none", md: "inline-flex" } }}
+          >
+            Voice order
+          </Button>
+          <IconButton
+            component="a"
+            href="/#voice-order"
+            color="primary"
+            aria-label="Order by voice"
+            sx={{
+              ml: { xs: "auto", sm: 1 },
+              width: 44,
+              height: 44,
+              display: { xs: "inline-flex", md: "none" },
+            }}
+          >
+            <MicRoundedIcon />
+          </IconButton>
           {showGames ? (
             <Button
               component={Link}
@@ -59,7 +83,7 @@ export const SiteHeader = () => {
               color="primary"
               aria-label="Play a game while you wait"
               sx={{
-                ml: { xs: "auto", sm: 1 },
+                ml: { xs: 0.5, sm: 1 },
                 width: 44,
                 height: 44,
                 display: { xs: "inline-flex", md: "none" },

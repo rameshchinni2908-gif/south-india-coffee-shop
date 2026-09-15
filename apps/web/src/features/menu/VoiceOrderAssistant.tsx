@@ -12,12 +12,17 @@ interface SpeechRecognitionEventLike extends Event {
   results: { [index: number]: { [index: number]: { transcript: string } } };
 }
 
+interface SpeechRecognitionErrorEventLike extends Event {
+  error?: string;
+}
+
 interface SpeechRecognitionLike {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onstart: (() => void) | null;
   onend: (() => void) | null;
   start(): void;
   stop(): void;
@@ -117,6 +122,7 @@ const findVoiceItems = (transcript: string, products: Product[]): NewCartItem[] 
 export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
   const { addItem, items } = useCart();
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const manualStopRef = useRef(false);
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -183,26 +189,44 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         ),
       );
     };
-    recognition.onerror = () => {
+    recognition.onstart = () => {
+      setListening(true);
+    };
+    recognition.onerror = (event) => {
       setListening(false);
-      setMessage("I could not hear that clearly. Please try again in a quiet place.");
+      if (manualStopRef.current || event.error === "aborted") return;
+      setMessage(
+        event.error === "not-allowed" || event.error === "service-not-allowed"
+          ? "Microphone access is blocked. Allow microphone access in your browser, then try again."
+          : event.error === "no-speech"
+            ? "No speech was detected. Tap the microphone and speak your order clearly."
+            : "Voice input is temporarily unavailable. Please try again or use the menu buttons.",
+      );
     };
     recognition.onend = () => setListening(false);
     recognitionRef.current = recognition;
+    manualStopRef.current = false;
     setMessage(
       "Listening… Say items and quantities, for example: two filter coffee large and one masala tea.",
     );
     setListening(true);
-    recognition.start();
+    try {
+      recognition.start();
+    } catch {
+      setListening(false);
+      setMessage("Voice input could not start. Please try again.");
+    }
   };
 
   const stopListening = () => {
+    manualStopRef.current = true;
     recognitionRef.current?.stop();
     setListening(false);
   };
 
   return (
     <Paper
+      id="voice-order"
       variant="outlined"
       sx={{
         mt: 3,
