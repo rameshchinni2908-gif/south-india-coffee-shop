@@ -14,4 +14,6 @@ export const adminOrdersQuery = (filters: {
     queryKey: [...ADMIN_ORDERS_QUERY_KEY, filters],
     queryFn: ({ signal }) => getAdminOrders(filters, signal),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });

@@ -1,4 +1,5 @@
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -122,6 +123,14 @@ export const AdminOrdersPage = () => {
             label="Refreshes every 30 seconds"
             variant="outlined"
           />
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={() => void ordersQuery.refetch()}
+            disabled={ordersQuery.isFetching}
+          >
+            {ordersQuery.isFetching ? "Refreshing…" : "Refresh now"}
+          </Button>
         </Stack>
 
         {mutationError && (
