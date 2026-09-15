@@ -11,6 +11,7 @@ import { useCategories, useProducts } from "./menu-queries.js";
 import { getMenuProductFilters } from "./menu-query-options.js";
 import { MenuEmptyState, MenuErrorState, MenuLoadingState } from "./MenuStates.js";
 import { ProductCard } from "./ProductCard.js";
+import { VoiceOrderAssistant } from "./VoiceOrderAssistant.js";
 
 const getCategory = (categories: Category[], categoryId: string): Category | undefined =>
   categories.find((category) => category.id === categoryId);
@@ -77,6 +78,8 @@ export const MenuPage = () => {
             onApply={applyFilters}
             onClear={clearFilters}
           />
+
+          <VoiceOrderAssistant products={productsQuery.data?.products ?? []} />
 
           {categoriesQuery.isError && (
             <Alert severity="warning" sx={{ mt: 2 }}>

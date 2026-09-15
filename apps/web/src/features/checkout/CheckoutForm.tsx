@@ -149,7 +149,9 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
         type="datetime-local"
         {...register("pickupTime")}
         error={Boolean(errors.pickupTime)}
-        helperText={errors.pickupTime?.message ?? "Shop time: Asia/Kolkata"}
+        helperText={
+          errors.pickupTime?.message ?? "Defaults to 30 minutes from now · shop time: Asia/Kolkata"
+        }
         slotProps={{
           inputLabel: { shrink: true },
           htmlInput: { min: earliestPickupTime },
