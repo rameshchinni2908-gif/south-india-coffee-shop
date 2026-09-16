@@ -3,6 +3,10 @@ import { z } from "zod";
 import { adminBriefQuestionSchema } from "../validation/admin-agent-schemas.js";
 import type { ModelInput, Respond } from "./openai-responses.js";
 import { readModelAnswer } from "./read-model-answer.js";
+import {
+  checkShopAssistantAnswer,
+  checkShopAssistantQuestion,
+} from "./shop-assistant-guardrails.js";
 import type { ShopAssistantSnapshot } from "./shop-assistant-summary.js";
 import { retrieveShopKnowledge } from "./shop-knowledge-retrieval.js";
 import type { KnowledgeDocument } from "./shop-knowledge.js";
@@ -58,6 +62,15 @@ export const runShopAssistantAgent = async (
 ) => {
   const parsed = adminBriefQuestionSchema.safeParse(question);
   if (!parsed.success) throw new Error("Ask a question between 1 and 500 characters.");
+  const questionGuardrail = checkShopAssistantQuestion(parsed.data);
+  if (!questionGuardrail.allowed) {
+    return {
+      answer: questionGuardrail.message,
+      usedShopData: false,
+      generatedAt: now().toISOString(),
+      sources: [],
+    };
+  }
 
   // RAG: retrieve only matching reference chunks before asking the model to generate an answer.
   const sources: ShopAssistantSource[] = retrieveKnowledge(parsed.data).map((document, index) => ({
@@ -139,7 +152,7 @@ export const runShopAssistantAgent = async (
     }
   }
 
-  const answer = readModelAnswer(response);
+  const answer = checkShopAssistantAnswer(readModelAnswer(response));
   const availableIds = new Set(sources.map((source) => source.id));
   for (const match of answer.matchAll(/\[([KMR]\d+)\]/g)) {
     if (!availableIds.has(match[1]!)) throw new Error("The answer cited an unavailable source.");
