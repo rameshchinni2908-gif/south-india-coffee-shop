@@ -10,7 +10,9 @@ import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
 import { BEAN_BLASTERS_PATH } from "./features/bean-blasters/arena-paths.js";
 import { BEAN_MERGE_PATH } from "./features/bean-merge/merge-paths.js";
+import { COFFEE_CATCH_PATH } from "./features/coffee-catch/coffee-catch-paths.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
+import { GamesHubPage } from "./features/kaapi-karts/GamesHubPage.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
 
@@ -95,6 +97,12 @@ const BeanMergeRoutes = lazy(async () => {
   return { default: module.BeanMergeRoutes };
 });
 
+const CoffeeCatchRoutes = lazy(async () => {
+  const module = await import("./features/coffee-catch/coffee-catch-routes.js");
+
+  return { default: module.CoffeeCatchRoutes };
+});
+
 const SecretSipRoutes = lazy(async () => {
   const module = await import("./features/secret-sip/SecretSipPage.js");
   return { default: module.SecretSipRoutes };
@@ -115,7 +123,9 @@ export const AppRoutes = () => (
                   match regardless of the order these are declared in. */}
               <Route path={`${BEAN_BLASTERS_PATH}/*`} element={<BeanBlastersRoutes />} />
               <Route path={`${BEAN_MERGE_PATH}/*`} element={<BeanMergeRoutes />} />
+              <Route path={`${COFFEE_CATCH_PATH}/*`} element={<CoffeeCatchRoutes />} />
               <Route path="/games/secret-sip/*" element={<SecretSipRoutes />} />
+              <Route path={GAMES_PATH} element={<GamesHubPage />} />
               <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
             </>
           ) : null}

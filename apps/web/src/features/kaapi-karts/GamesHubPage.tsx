@@ -1,4 +1,5 @@
 import Grid4x4OutlinedIcon from "@mui/icons-material/Grid4x4Outlined";
+import LocalCafeOutlinedIcon from "@mui/icons-material/LocalCafeOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import SportsMmaOutlinedIcon from "@mui/icons-material/SportsMmaOutlined";
@@ -40,6 +41,7 @@ import {
   GAME_TAGLINE as MERGE_TAGLINE,
 } from "../bean-merge/merge-contract.js";
 import { BEAN_MERGE_PATH } from "../bean-merge/merge-paths.js";
+import { COFFEE_CATCH_PATH } from "../coffee-catch/coffee-catch-paths.js";
 // --- end Bean Merge card ---
 import { pingGameHealth } from "./game-api.js";
 import { SIP_NAME, SIP_PATH } from "../secret-sip/sip-contract.js";
@@ -243,6 +245,15 @@ export const GamesHubPage = () => {
               reducedMotion={reducedMotion}
             />
             {/* --- end Bean Merge card --- */}
+            <GameCard
+              name="Coffee Catch"
+              tagline="Catch the good beans, dodge the spills, and beat your best in 45 seconds."
+              path={COFFEE_CATCH_PATH}
+              chips={["1 player", "45 seconds"]}
+              gradient="linear-gradient(135deg, #442012 0%, #6f3219 52%, #c98a4b 100%)"
+              icon={<LocalCafeOutlinedIcon sx={{ fontSize: 62, opacity: 0.92 }} />}
+              reducedMotion={reducedMotion}
+            />
           </Box>
 
           <Typography variant="body2" color="text.secondary" sx={{ mt: 4, maxWidth: 660 }}>
