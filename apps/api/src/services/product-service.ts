@@ -32,6 +32,7 @@ export interface ProductService {
   update(id: string, input: UpdateProductInput, changedBy: string): Promise<ProductRecord>;
   updateAvailability(id: string, input: UpdateAvailabilityInput): Promise<ProductRecord>;
   archive(id: string, actor: StaffIdentity): Promise<ProductRecord>;
+  restore(id: string, actor: StaffIdentity): Promise<ProductRecord>;
 }
 
 const ensureCategoryExists = async (
@@ -334,6 +335,20 @@ export const createProductService = (
 
     if (!product) {
       throw new HttpError(404, "PRODUCT_NOT_FOUND", "Product was not found");
+    }
+
+    return product;
+  },
+
+  async restore(id, actor) {
+    if (actor.role !== "ADMIN") {
+      throw new HttpError(403, "FORBIDDEN", "Only an ADMIN can restore products");
+    }
+
+    const product = await productRepository.restoreById(id);
+
+    if (!product) {
+      throw new HttpError(404, "PRODUCT_NOT_FOUND", "Archived product was not found");
     }
 
     return product;

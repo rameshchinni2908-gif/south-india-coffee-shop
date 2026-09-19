@@ -71,6 +71,7 @@ const authService: AuthService = {
 const createCatalogApp = () => {
   let publicQuery: PublicProductQuery | null = null;
   let archiveCalls = 0;
+  let restoreCalls = 0;
   const categoryService: CategoryService = {
     listPublic: () => Promise.resolve([category]),
     listAdmin: () =>
@@ -103,6 +104,10 @@ const createCatalogApp = () => {
       archiveCalls += 1;
       return Promise.resolve({ ...product, isActive: false, isArchived: true });
     },
+    restore: () => {
+      restoreCalls += 1;
+      return Promise.resolve({ ...product, isActive: true, isArchived: false });
+    },
   };
   const app = createApp({
     clientUrl: "http://localhost:5173",
@@ -117,6 +122,7 @@ const createCatalogApp = () => {
     app,
     getPublicQuery: () => publicQuery,
     getArchiveCalls: () => archiveCalls,
+    getRestoreCalls: () => restoreCalls,
   };
 };
 
@@ -234,5 +240,16 @@ describe("catalog API", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.product).toMatchObject({ isActive: false, isArchived: true });
     expect(testApp.getArchiveCalls()).toBe(1);
+  });
+
+  it("allows an ADMIN to restore archived products", async () => {
+    const testApp = createCatalogApp();
+    const response = await request(testApp.app)
+      .post(`/api/admin/products/${PRODUCT_ID}/restore`)
+      .set("Cookie", "staff_access_token=admin");
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.product).toMatchObject({ isActive: true, isArchived: false });
+    expect(testApp.getRestoreCalls()).toBe(1);
   });
 });

@@ -40,6 +40,12 @@ export const createAdminProductRouter = (
     controller.update,
   );
   router.delete("/:id", validateParams(idParamsSchema), requireRoles("ADMIN"), controller.archive);
+  router.post(
+    "/:id/restore",
+    validateParams(idParamsSchema),
+    requireRoles("ADMIN"),
+    controller.restore,
+  );
 
   return router;
 };

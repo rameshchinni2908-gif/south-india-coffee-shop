@@ -30,6 +30,7 @@ export const createProductController = (
   update: RequestHandler;
   updateAvailability: RequestHandler;
   archive: RequestHandler;
+  restore: RequestHandler;
 } => ({
   listPublic: asyncHandler(async (request, response) => {
     const result = await productService.listPublic(request.validatedQuery as PublicProductQuery);
@@ -120,6 +121,19 @@ export const createProductController = (
     const { id } = request.validatedParams as { id: string };
     const actor = getAuthenticatedUser(request);
     const product = await productService.archive(id, actor);
+
+    response.status(200).json({
+      success: true,
+      data: { product },
+      meta: {},
+      error: null,
+    });
+  }),
+
+  restore: asyncHandler(async (request, response) => {
+    const { id } = request.validatedParams as { id: string };
+    const actor = getAuthenticatedUser(request);
+    const product = await productService.restore(id, actor);
 
     response.status(200).json({
       success: true,

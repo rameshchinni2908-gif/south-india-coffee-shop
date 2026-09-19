@@ -47,6 +47,7 @@ export interface ProductRepository {
     priceHistory: PriceHistoryInput[],
   ): Promise<ProductRecord | null>;
   archiveById(id: string, archivedBy: string): Promise<ProductRecord | null>;
+  restoreById(id: string): Promise<ProductRecord | null>;
 }
 
 const toVariantRecord = (
@@ -246,6 +247,21 @@ export class MongooseProductRepository implements ProductRepository {
         isActive: false,
         archivedAt: new Date(),
         archivedBy: new Types.ObjectId(archivedBy),
+      },
+      { new: true, runValidators: true },
+    ).exec();
+
+    return product ? toProductRecord(product) : null;
+  }
+
+  public async restoreById(id: string): Promise<ProductRecord | null> {
+    const product = await ProductModel.findOneAndUpdate(
+      { _id: id, isArchived: true },
+      {
+        isArchived: false,
+        isActive: true,
+        archivedAt: null,
+        archivedBy: null,
       },
       { new: true, runValidators: true },
     ).exec();

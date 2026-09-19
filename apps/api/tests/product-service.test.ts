@@ -162,6 +162,21 @@ class FakeProductRepository implements ProductRepository {
     };
     return Promise.resolve(this.product);
   }
+
+  public restoreById(id: string): Promise<ProductRecord | null> {
+    if (!this.product || this.product.id !== id) {
+      return Promise.resolve(null);
+    }
+
+    this.product = {
+      ...this.product,
+      isActive: true,
+      isArchived: false,
+      archivedAt: null,
+      archivedBy: null,
+    };
+    return Promise.resolve(this.product);
+  }
 }
 
 describe("product service", () => {
@@ -351,5 +366,34 @@ describe("product service", () => {
       isArchived: true,
       archivedBy: ADMIN_ID,
     });
+  });
+
+  it("restores an archived product for an ADMIN", async () => {
+    const productRepository = new FakeProductRepository();
+    productRepository.product = {
+      ...productRepository.product!,
+      isActive: false,
+      isArchived: true,
+      archivedAt: new Date(),
+      archivedBy: ADMIN_ID,
+    };
+    const service = createProductService(productRepository, new FakeCategoryRepository());
+
+    const product = await service.restore(PRODUCT_ID, { id: ADMIN_ID, role: "ADMIN" });
+
+    expect(product).toMatchObject({
+      isActive: true,
+      isArchived: false,
+      archivedAt: null,
+      archivedBy: null,
+    });
+  });
+
+  it("enforces ADMIN-only product restoration in the service layer", async () => {
+    const service = createProductService(new FakeProductRepository(), new FakeCategoryRepository());
+
+    await expect(
+      service.restore(PRODUCT_ID, { id: ADMIN_ID, role: "STAFF" }),
+    ).rejects.toMatchObject({ statusCode: 403, code: "FORBIDDEN" });
   });
 });

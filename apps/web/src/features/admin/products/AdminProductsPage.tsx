@@ -3,6 +3,7 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import RestoreFromTrashOutlinedIcon from "@mui/icons-material/RestoreFromTrashOutlined";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -33,7 +34,7 @@ import { ApiClientError } from "../../../lib/api-client.js";
 import { formatRupees } from "../../../lib/currency.js";
 import type { StaffUser } from "../../../types/auth.js";
 import type { Product } from "../../../types/catalog.js";
-import { archiveProduct } from "./admin-catalog-api.js";
+import { archiveProduct, restoreProduct } from "./admin-catalog-api.js";
 import {
   ADMIN_PRODUCTS_QUERY_KEY,
   adminCategoriesQuery,
@@ -63,8 +64,12 @@ export const AdminProductsPage = () => {
   const [editorProduct, setEditorProduct] = useState<Product | null>(null);
   const [availabilityProduct, setAvailabilityProduct] = useState<Product | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Product | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const filters = useMemo(() => ({ page, search }), [page, search]);
+  const filters = useMemo(
+    () => ({ page, search, archived: showArchived }),
+    [page, search, showArchived],
+  );
   const productsQuery = useQuery(adminProductsQuery(filters));
   const categoriesQuery = useQuery(adminCategoriesQuery);
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
@@ -79,11 +84,23 @@ export const AdminProductsPage = () => {
       setArchiveTarget(null);
     },
   });
+  const restoreMutation = useMutation({
+    mutationFn: restoreProduct,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ADMIN_PRODUCTS_QUERY_KEY });
+    },
+  });
   const archiveError =
     archiveMutation.error instanceof ApiClientError
       ? archiveMutation.error.message
       : archiveMutation.isError
         ? "The product could not be archived."
+        : null;
+  const restoreError =
+    restoreMutation.error instanceof ApiClientError
+      ? restoreMutation.error.message
+      : restoreMutation.isError
+        ? "The product could not be restored."
         : null;
 
   const openCreateProduct = () => {
@@ -95,6 +112,13 @@ export const AdminProductsPage = () => {
     event.preventDefault();
     setPage(1);
     setSearch(searchInput.trim());
+  };
+
+  const changeProductView = (archived: boolean) => {
+    setShowArchived(archived);
+    setPage(1);
+    setSearchInput("");
+    setSearch("");
   };
 
   return (
@@ -145,9 +169,9 @@ export const AdminProductsPage = () => {
             Create a category before adding your first product.
           </Alert>
         )}
-        {archiveError && (
+        {(archiveError || restoreError) && (
           <Alert severity="error" sx={{ mt: 3 }}>
-            {archiveError}
+            {archiveError ?? restoreError}
           </Alert>
         )}
 
@@ -191,6 +215,18 @@ export const AdminProductsPage = () => {
               Clear
             </Button>
           )}
+          {user.role === "ADMIN" && (
+            <Button
+              type="button"
+              size="small"
+              variant={showArchived ? "contained" : "outlined"}
+              color={showArchived ? "secondary" : "inherit"}
+              onClick={() => changeProductView(!showArchived)}
+              startIcon={showArchived ? <RestoreFromTrashOutlinedIcon /> : <ArchiveOutlinedIcon />}
+            >
+              {showArchived ? "Archived products" : "View archived"}
+            </Button>
+          )}
         </Stack>
 
         {productsQuery.isPending && (
@@ -213,7 +249,11 @@ export const AdminProductsPage = () => {
         )}
         {productsQuery.data?.products.length === 0 && (
           <Alert severity="info">
-            {search ? "No products match this search." : "No products have been created yet."}
+            {showArchived
+              ? "No archived products found. Archived products will appear here."
+              : search
+                ? "No products match this search."
+                : "No products have been created yet."}
           </Alert>
         )}
         {productsQuery.data && productsQuery.data.products.length > 0 && (
@@ -262,6 +302,9 @@ export const AdminProductsPage = () => {
                           useFlexGap
                           sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}
                         >
+                          {product.isArchived && (
+                            <Chip size="small" color="secondary" label="Archived" />
+                          )}
                           <Chip
                             size="small"
                             color={product.isActive ? "success" : "default"}
@@ -314,29 +357,42 @@ export const AdminProductsPage = () => {
                       </Stack>
                     </CardContent>
                     <CardActions sx={{ px: 2.5, pb: 2.5, flexWrap: "wrap", gap: 1 }}>
-                      <Button
-                        startIcon={<EditOutlinedIcon />}
-                        onClick={() => {
-                          setEditorProduct(product);
-                          setEditorOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        startIcon={<Inventory2OutlinedIcon />}
-                        onClick={() => setAvailabilityProduct(product)}
-                      >
-                        Stock & availability
-                      </Button>
-                      {user.role === "ADMIN" && (
+                      {product.isArchived ? (
                         <Button
-                          color="error"
-                          startIcon={<ArchiveOutlinedIcon />}
-                          onClick={() => setArchiveTarget(product)}
+                          variant="contained"
+                          startIcon={<RestoreFromTrashOutlinedIcon />}
+                          disabled={restoreMutation.isPending}
+                          onClick={() => restoreMutation.mutate(product.id)}
                         >
-                          Archive
+                          {restoreMutation.isPending ? "Restoring…" : "Unarchive product"}
                         </Button>
+                      ) : (
+                        <>
+                          <Button
+                            startIcon={<EditOutlinedIcon />}
+                            onClick={() => {
+                              setEditorProduct(product);
+                              setEditorOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            startIcon={<Inventory2OutlinedIcon />}
+                            onClick={() => setAvailabilityProduct(product)}
+                          >
+                            Stock & availability
+                          </Button>
+                          {user.role === "ADMIN" && (
+                            <Button
+                              color="error"
+                              startIcon={<ArchiveOutlinedIcon />}
+                              onClick={() => setArchiveTarget(product)}
+                            >
+                              Archive
+                            </Button>
+                          )}
+                        </>
                       )}
                     </CardActions>
                   </Card>

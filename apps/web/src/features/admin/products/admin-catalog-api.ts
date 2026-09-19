@@ -33,13 +33,13 @@ export interface CategoryInput {
 }
 
 export const getAdminProducts = async (
-  filters: { page: number; search: string },
+  filters: { page: number; search: string; archived: boolean },
   signal?: AbortSignal,
 ): Promise<{ products: Product[]; meta: PaginationMeta }> => {
   const params = new URLSearchParams({
     page: String(filters.page),
     limit: "12",
-    archived: "false",
+    archived: String(filters.archived),
     sortBy: "updatedAt",
     sortOrder: "desc",
   });
@@ -94,6 +94,15 @@ export const updateAvailability = async (
 
 export const archiveProduct = async (id: string): Promise<Product> => {
   const response = await apiDelete<{ product: Product }>(`/api/admin/products/${id}`);
+
+  return response.data.product;
+};
+
+export const restoreProduct = async (id: string): Promise<Product> => {
+  const response = await apiPost<{ product: Product }, Record<string, never>>(
+    `/api/admin/products/${id}/restore`,
+    {},
+  );
 
   return response.data.product;
 };

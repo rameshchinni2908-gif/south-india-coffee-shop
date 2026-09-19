@@ -130,6 +130,10 @@ class FakeProductRepository implements ProductRepository {
     return Promise.resolve(this.product ?? createProduct());
   }
 
+  public restoreById(_id: string): Promise<ProductRecord | null> {
+    return Promise.resolve(this.product);
+  }
+
   public updateById(
     _id: string,
     _data: Partial<ProductWriteData>,

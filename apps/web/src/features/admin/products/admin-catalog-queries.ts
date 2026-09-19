@@ -5,7 +5,7 @@ import { getAdminCategories, getAdminProducts } from "./admin-catalog-api.js";
 export const ADMIN_PRODUCTS_QUERY_KEY = ["admin", "products"] as const;
 export const ADMIN_CATEGORIES_QUERY_KEY = ["admin", "categories"] as const;
 
-export const adminProductsQuery = (filters: { page: number; search: string }) =>
+export const adminProductsQuery = (filters: { page: number; search: string; archived: boolean }) =>
   queryOptions({
     queryKey: [...ADMIN_PRODUCTS_QUERY_KEY, filters],
     queryFn: ({ signal }) => getAdminProducts(filters, signal),
