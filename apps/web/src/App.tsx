@@ -10,7 +10,7 @@ import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { CartProvider } from "./features/cart/CartProvider.js";
 import { BEAN_BLASTERS_PATH } from "./features/bean-blasters/arena-paths.js";
 import { BEAN_MERGE_PATH } from "./features/bean-merge/merge-paths.js";
-import { COFFEE_CATCH_PATH } from "./features/coffee-catch/coffee-catch-paths.js";
+import { BEAN_SWEEPER_PATH } from "./features/bean-sweeper/bean-sweeper-paths.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
 import { GamesHubPage } from "./features/kaapi-karts/GamesHubPage.js";
 import { queryClient } from "./lib/query-client.js";
@@ -97,10 +97,10 @@ const BeanMergeRoutes = lazy(async () => {
   return { default: module.BeanMergeRoutes };
 });
 
-const CoffeeCatchRoutes = lazy(async () => {
-  const module = await import("./features/coffee-catch/coffee-catch-routes.js");
+const BeanSweeperRoutes = lazy(async () => {
+  const module = await import("./features/bean-sweeper/bean-sweeper-routes.js");
 
-  return { default: module.CoffeeCatchRoutes };
+  return { default: module.BeanSweeperRoutes };
 });
 
 const SecretSipRoutes = lazy(async () => {
@@ -123,7 +123,7 @@ export const AppRoutes = () => (
                   match regardless of the order these are declared in. */}
               <Route path={`${BEAN_BLASTERS_PATH}/*`} element={<BeanBlastersRoutes />} />
               <Route path={`${BEAN_MERGE_PATH}/*`} element={<BeanMergeRoutes />} />
-              <Route path={`${COFFEE_CATCH_PATH}/*`} element={<CoffeeCatchRoutes />} />
+              <Route path={`${BEAN_SWEEPER_PATH}/*`} element={<BeanSweeperRoutes />} />
               <Route path="/games/secret-sip/*" element={<SecretSipRoutes />} />
               <Route path={GAMES_PATH} element={<GamesHubPage />} />
               <Route path={`${GAMES_PATH}/*`} element={<KaapiKartsRoutes />} />
