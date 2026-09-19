@@ -79,9 +79,10 @@ const StaffManagement = ({ user }: { user: StaffUser }) => {
           direction={{ xs: "column", md: "row" }}
           spacing={1.5}
           onSubmit={applySearch}
-          sx={{ my: 4 }}
+          sx={{ my: { xs: 2.5, md: 3 }, alignItems: { md: "center" } }}
         >
           <TextField
+            size="small"
             label="Search name or email"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -99,6 +100,7 @@ const StaffManagement = ({ user }: { user: StaffUser }) => {
           />
           <TextField
             select
+            size="small"
             label="Role"
             value={role}
             onChange={(event) => {
@@ -113,6 +115,7 @@ const StaffManagement = ({ user }: { user: StaffUser }) => {
           </TextField>
           <TextField
             select
+            size="small"
             label="Account status"
             value={active}
             onChange={(event) => {
@@ -125,7 +128,7 @@ const StaffManagement = ({ user }: { user: StaffUser }) => {
             <MenuItem value="true">Active</MenuItem>
             <MenuItem value="false">Inactive</MenuItem>
           </TextField>
-          <Button type="submit" variant="outlined">
+          <Button type="submit" variant="outlined" size="small">
             Search
           </Button>
         </Stack>

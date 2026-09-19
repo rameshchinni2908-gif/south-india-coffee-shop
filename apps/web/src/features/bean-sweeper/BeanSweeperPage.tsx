@@ -50,7 +50,7 @@ const colourFor = (number: number): string =>
 export const BeanSweeperPage = () => {
   const [board, setBoard] = useState<Board>(() => createBoard());
   const [seconds, setSeconds] = useState(0);
-  const [best, setBest] = useState(readBest);
+  const [best] = useState(readBest);
   const [started, setStarted] = useState(false);
   const [flagMode, setFlagMode] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -58,6 +58,7 @@ export const BeanSweeperPage = () => {
   const lost = hasLost(board);
   const won = hasWon(board);
   const finished = lost || won;
+  const currentBest = won && (best === null || seconds < best) ? seconds : best;
   const reset = useCallback(() => {
     setBoard(createBoard());
     setSeconds(0);
@@ -73,7 +74,6 @@ export const BeanSweeperPage = () => {
 
   useEffect(() => {
     if (!won || (best !== null && seconds >= best)) return;
-    setBest(seconds);
     try {
       window.localStorage.setItem(STORAGE_BEST_TIME, String(seconds));
     } catch {
@@ -126,7 +126,9 @@ export const BeanSweeperPage = () => {
             </Box>
             <Paper variant="outlined" sx={{ px: 1.5, py: 1, textAlign: "center" }}>
               <Typography variant="caption">Best</Typography>
-              <Typography sx={{ fontWeight: 900 }}>{best === null ? "-" : `${best}s`}</Typography>
+              <Typography sx={{ fontWeight: 900 }}>
+                {currentBest === null ? "-" : `${currentBest}s`}
+              </Typography>
             </Paper>
           </Stack>
           <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: "center", flexWrap: "wrap" }}>

@@ -144,9 +144,10 @@ export const AdminOrdersPage = () => {
           direction={{ xs: "column", md: "row" }}
           spacing={1.5}
           onSubmit={applySearch}
-          sx={{ my: 4 }}
+          sx={{ my: { xs: 2.5, md: 3 }, alignItems: { md: "center" } }}
         >
           <TextField
+            size="small"
             label="Search order, customer, or mobile"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -164,6 +165,7 @@ export const AdminOrdersPage = () => {
           />
           <TextField
             select
+            size="small"
             label="Status"
             value={status}
             onChange={(event) => {
@@ -179,7 +181,7 @@ export const AdminOrdersPage = () => {
               </MenuItem>
             ))}
           </TextField>
-          <Button type="submit" variant="outlined">
+          <Button type="submit" variant="outlined" size="small">
             Search
           </Button>
         </Stack>

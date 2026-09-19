@@ -156,9 +156,10 @@ export const AdminProductsPage = () => {
           direction={{ xs: "column", sm: "row" }}
           spacing={1.5}
           onSubmit={applySearch}
-          sx={{ my: 4 }}
+          sx={{ my: { xs: 2.5, md: 3 }, alignItems: { sm: "center" } }}
         >
           <TextField
+            size="small"
             label="Search products"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -174,11 +175,12 @@ export const AdminProductsPage = () => {
             }}
             sx={{ flex: 1, maxWidth: 520 }}
           />
-          <Button type="submit" variant="outlined">
+          <Button type="submit" variant="outlined" size="small">
             Search
           </Button>
           {search && (
             <Button
+              size="small"
               color="inherit"
               onClick={() => {
                 setSearchInput("");
