@@ -84,5 +84,19 @@ export const theme = createTheme({
         },
       },
     },
+    // Most forms register inputs uncontrolled via react-hook-form, so MUI never
+    // sees a value change when the form is reset or Chrome autofills a field.
+    // The label then stays over the text until the field is focused. Floating
+    // the label (and notching the outline) unconditionally keeps it out of the way.
+    MuiInputLabel: {
+      defaultProps: {
+        shrink: true,
+      },
+    },
+    MuiOutlinedInput: {
+      defaultProps: {
+        notched: true,
+      },
+    },
   },
 });
