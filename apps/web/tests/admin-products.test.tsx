@@ -49,6 +49,14 @@ const product = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
+const archivedProduct = {
+  ...product,
+  isActive: false,
+  isArchived: true,
+  archivedAt: "2026-02-01T00:00:00.000Z",
+  archivedBy: "507f1f77bcf86cd799439099",
+};
+
 const user = (role: "ADMIN" | "STAFF") => ({
   id: "507f1f77bcf86cd799439099",
   name: role === "ADMIN" ? "Admin User" : "Staff User",
@@ -138,9 +146,14 @@ const installAdminFetch = (
         apiError(401, "AUTHENTICATION_REQUIRED", "Authentication is required"),
       );
     }
+    if (url.includes(`/api/admin/products/${PRODUCT_ID}/restore`) && method === "POST") {
+      return Promise.resolve(apiResponse({ product }));
+    }
     if (url.includes("/api/admin/products") && method === "GET") {
+      const listed = url.includes("archived=true") ? archivedProduct : product;
+
       return Promise.resolve(
-        apiResponse({ products: [product] }, 200, { page: 1, limit: 12, total: 1, totalPages: 1 }),
+        apiResponse({ products: [listed] }, 200, { page: 1, limit: 12, total: 1, totalPages: 1 }),
       );
     }
 
@@ -231,6 +244,45 @@ describe("admin product management", () => {
 
     expect(await screen.findByRole("heading", { name: "Filter Coffee" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Archive" })).not.toBeInTheDocument();
+  });
+
+  it("unarchives a product from the archived view", async () => {
+    const fetchMock = installAdminFetch("ADMIN");
+    const visitor = userEvent.setup();
+    renderRoute("/admin/products");
+
+    await visitor.click(await screen.findByRole("button", { name: "View archived" }));
+    await visitor.click(await screen.findByRole("button", { name: "Unarchive product" }));
+
+    await waitFor(() => {
+      const restoreCall = fetchMock.mock.calls.find(
+        ([input, options]) =>
+          String(input).endsWith(`/api/admin/products/${PRODUCT_ID}/restore`) &&
+          options?.method === "POST",
+      );
+
+      expect(restoreCall).toBeDefined();
+    });
+  });
+
+  it("keeps the label clear of a value the form filled in without a change event", async () => {
+    installAdminFetch("ADMIN");
+    const visitor = userEvent.setup();
+    renderRoute("/admin/products");
+
+    await visitor.click(await screen.findByRole("button", { name: "Manage categories" }));
+    await visitor.click(await screen.findByRole("button", { name: `Edit ${category.name}` }));
+
+    const nameInput = await screen.findByLabelText("Category name");
+
+    expect(nameInput).toHaveValue(category.name);
+    // The label must already be floated, not sitting over the value, before the
+    // field is ever focused.
+    expect(document.activeElement).not.toBe(nameInput);
+    expect(document.querySelector(`label[for="${nameInput.id}"]`)).toHaveAttribute(
+      "data-shrink",
+      "true",
+    );
   });
 
   it("submits stock and availability through the dedicated endpoint", async () => {
