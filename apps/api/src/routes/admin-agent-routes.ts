@@ -1,14 +1,22 @@
-import { Router, type RequestHandler } from "express";
+import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 
 import { createAdminAgentController } from "../controllers/admin-agent-controller.js";
 import { createAuthenticateStaff } from "../middleware/authenticate-staff.js";
 import { HttpError } from "../middleware/http-error.js";
 import { requireRoles } from "../middleware/require-role.js";
+import { createRequireTrustedOrigin } from "../middleware/require-trusted-origin.js";
 import { validateBody } from "../middleware/validate-body.js";
+import { validateParams } from "../middleware/validate-params.js";
+import { validateQuery } from "../middleware/validate-query.js";
 import type { AdminAgentService } from "../services/admin-agent-service.js";
 import type { AuthService } from "../services/auth-service.js";
-import { adminBriefBodySchema } from "../validation/admin-agent-schemas.js";
+import {
+  adminBriefBodySchema,
+  agentRunFeedbackBodySchema,
+  agentRunIdParamsSchema,
+  agentRunQuerySchema,
+} from "../validation/admin-agent-schemas.js";
 
 export const createAdminAgentRouter = (
   authService: AuthService,
@@ -17,15 +25,7 @@ export const createAdminAgentRouter = (
 ): Router => {
   const router = Router();
   const controller = createAdminAgentController(adminAgentService);
-  const allowedOrigin = new URL(clientUrl).origin;
-  const requireTrustedOrigin: RequestHandler = (request, _response, next) => {
-    const origin = request.get("Origin");
-    if (origin !== undefined && origin !== allowedOrigin) {
-      next(new HttpError(403, "FORBIDDEN", "This request origin is not permitted."));
-      return;
-    }
-    next();
-  };
+  const requireTrustedOrigin = createRequireTrustedOrigin(clientUrl);
   const briefingLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 5,
@@ -55,6 +55,14 @@ export const createAdminAgentRouter = (
     validateBody(adminBriefBodySchema),
     briefingLimit,
     controller.createBriefing,
+  );
+  router.get("/runs", validateQuery(agentRunQuerySchema), controller.listRuns);
+  router.patch(
+    "/runs/:id/feedback",
+    requireTrustedOrigin,
+    validateParams(agentRunIdParamsSchema),
+    validateBody(agentRunFeedbackBodySchema),
+    controller.rateRun,
   );
 
   return router;

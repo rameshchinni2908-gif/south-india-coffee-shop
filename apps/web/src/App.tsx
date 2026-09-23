@@ -70,6 +70,18 @@ const AdminDashboardPage = lazy(async () => {
   return { default: module.AdminDashboardPage };
 });
 
+const AdminAgentRunsPage = lazy(async () => {
+  const module = await import("./features/admin/agent-runs/AdminAgentRunsPage.js");
+
+  return { default: module.AdminAgentRunsPage };
+});
+
+const AdminKnowledgePage = lazy(async () => {
+  const module = await import("./features/admin/knowledge/AdminKnowledgePage.js");
+
+  return { default: module.AdminKnowledgePage };
+});
+
 const AdminStaffPage = lazy(async () => {
   const module = await import("./features/admin/staff/AdminStaffPage.js");
 
@@ -136,6 +148,8 @@ export const AppRoutes = () => (
             <Route path="/admin/orders" element={<AdminOrdersPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/staff" element={<AdminStaffPage />} />
+            <Route path="/admin/assistant-runs" element={<AdminAgentRunsPage />} />
+            <Route path="/admin/knowledge" element={<AdminKnowledgePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

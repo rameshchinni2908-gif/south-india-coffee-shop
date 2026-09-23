@@ -4,6 +4,14 @@ const responseSchema = z.object({
   status: z.literal("completed"),
   // Preserve all output items, including reasoning state, for the next request.
   output: z.array(z.object({ type: z.string() }).passthrough()).max(20),
+  // Token counts feed the agent run log. Absent usage never fails a run.
+  usage: z
+    .object({
+      input_tokens: z.number().int().nonnegative(),
+      output_tokens: z.number().int().nonnegative(),
+    })
+    .optional()
+    .catch(undefined),
 });
 
 export type ModelResponse = z.infer<typeof responseSchema>;

@@ -35,6 +35,14 @@ services:
         sync: false
       - key: OPENAI_MODEL
         sync: false
+      # Hybrid knowledge retrieval. Defaults: text-embedding-3-small, 512 dimensions and
+      # in-memory vector search. Set atlas only after running `npm run knowledge:index`.
+      - key: OPENAI_EMBEDDING_MODEL
+        sync: false
+      - key: OPENAI_EMBEDDING_DIMENSIONS
+        sync: false
+      - key: KNOWLEDGE_VECTOR_SEARCH
+        value: memory
       # Optional bearer token for the read-only /api/mcp endpoint.
       - key: MCP_SERVER_TOKEN
         sync: false

@@ -30,7 +30,7 @@ interface ShopAssistantDependencies {
   respond: Respond;
   getShopSummary(): Promise<ShopAssistantSnapshot>;
   getShopMenu(): Promise<ShopMenuSnapshot>;
-  retrieveKnowledge?(question: string): KnowledgeDocument[];
+  retrieveKnowledge?(question: string): KnowledgeDocument[] | Promise<KnowledgeDocument[]>;
   now?: () => Date;
 }
 
@@ -73,7 +73,8 @@ export const runShopAssistantAgent = async (
   }
 
   // RAG: retrieve only matching reference chunks before asking the model to generate an answer.
-  const sources: ShopAssistantSource[] = retrieveKnowledge(parsed.data).map((document, index) => ({
+  const retrieved = await retrieveKnowledge(parsed.data);
+  const sources: ShopAssistantSource[] = retrieved.map((document, index) => ({
     id: `K${index + 1}`,
     title: document.title,
     kind: "knowledge",

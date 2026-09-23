@@ -79,10 +79,17 @@ const tokenize = (text: string): Set<string> => {
   );
 };
 
-export const retrieveShopKnowledge = (
+export interface RankedKnowledgeDocument {
+  document: KnowledgeDocument;
+  score: number;
+}
+
+// Scores are exposed for the agent run log and retrieval evals; the agent only needs documents.
+export const rankShopKnowledge = (
   question: string,
   documents: readonly KnowledgeDocument[] = SHOP_KNOWLEDGE_DOCUMENTS,
-): KnowledgeDocument[] => {
+  limit = MAX_RESULTS,
+): RankedKnowledgeDocument[] => {
   const terms = tokenize(question.slice(0, 2_000));
   if (terms.size === 0) return [];
 
@@ -102,6 +109,11 @@ export const retrieveShopKnowledge = (
     })
     .filter(({ score }) => score >= MINIMUM_SCORE)
     .sort((left, right) => right.score - left.score || left.position - right.position)
-    .slice(0, MAX_RESULTS)
-    .map(({ document }) => document);
+    .slice(0, limit)
+    .map(({ document, score }) => ({ document, score }));
 };
+
+export const retrieveShopKnowledge = (
+  question: string,
+  documents: readonly KnowledgeDocument[] = SHOP_KNOWLEDGE_DOCUMENTS,
+): KnowledgeDocument[] => rankShopKnowledge(question, documents).map(({ document }) => document);

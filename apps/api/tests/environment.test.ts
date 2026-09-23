@@ -22,6 +22,48 @@ describe("loadEnvironment", () => {
     });
   });
 
+  it.each([undefined, "", "   "])("starts without an MCP server token (%s)", (token) => {
+    const environment = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+      ...(token === undefined ? {} : { MCP_SERVER_TOKEN: token }),
+    });
+
+    expect(environment.MCP_SERVER_TOKEN).toBeUndefined();
+  });
+
+  it("rejects a short MCP server token", () => {
+    expect(() =>
+      loadEnvironment({
+        MONGODB_URI: "mongodb://localhost:27017/test",
+        JWT_SECRET: VALID_JWT_SECRET,
+        MCP_SERVER_TOKEN: "too-short",
+      }),
+    ).toThrow("MCP_SERVER_TOKEN must contain at least 32 characters");
+  });
+
+  it("defaults hybrid retrieval settings and treats blank values as unset", () => {
+    const environment = loadEnvironment({
+      MONGODB_URI: "mongodb://localhost:27017/test",
+      JWT_SECRET: VALID_JWT_SECRET,
+      OPENAI_EMBEDDING_DIMENSIONS: "",
+      KNOWLEDGE_VECTOR_SEARCH: " ",
+    });
+
+    expect(environment).toMatchObject({
+      OPENAI_EMBEDDING_MODEL: "text-embedding-3-small",
+      OPENAI_EMBEDDING_DIMENSIONS: 512,
+      KNOWLEDGE_VECTOR_SEARCH: "memory",
+    });
+    expect(() =>
+      loadEnvironment({
+        MONGODB_URI: "mongodb://localhost:27017/test",
+        JWT_SECRET: VALID_JWT_SECRET,
+        KNOWLEDGE_VECTOR_SEARCH: "pinecone",
+      }),
+    ).toThrow("KNOWLEDGE_VECTOR_SEARCH");
+  });
+
   it.each([undefined, "", "   "])("allows an unconfigured assistant key (%s)", (apiKey) => {
     const environment = loadEnvironment({
       MONGODB_URI: "mongodb://localhost:27017/test",

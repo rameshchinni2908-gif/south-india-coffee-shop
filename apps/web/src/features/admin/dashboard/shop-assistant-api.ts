@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "../../../lib/api-client.js";
+import { apiGet, apiPatch, apiPost } from "../../../lib/api-client.js";
 
 export interface ShopAssistantSource {
   id: string;
@@ -12,6 +12,55 @@ export interface ShopBriefing {
   usedShopData: boolean;
   generatedAt: string;
   sources?: ShopAssistantSource[];
+  runId?: string;
+}
+
+export type AgentRunOutcome = "ANSWERED" | "BLOCKED" | "FAILED";
+export type AgentRunRating = "UP" | "DOWN";
+
+export interface AgentRun {
+  id: string;
+  question: string;
+  outcome: AgentRunOutcome;
+  answer: string | null;
+  failureReason: string | null;
+  sourceIds: string[];
+  model: string | null;
+  totalDurationMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  trace: {
+    // Absent on runs saved before hybrid retrieval.
+    retrieval?: {
+      mode: "hybrid" | "keyword";
+      durationMs: number;
+      embeddingTokens: number;
+      fallbackReason: string | null;
+    } | null;
+    retrievedKnowledge: {
+      id: string;
+      fusedScore?: number;
+      keywordScore?: number | null;
+      similarity?: number | null;
+      // Keyword score stored by older runs.
+      score?: number;
+    }[];
+    modelCalls: {
+      durationMs: number;
+      ok: boolean;
+      inputTokens: number | null;
+      outputTokens: number | null;
+      requestedTools: string[];
+    }[];
+    toolCalls: { name: string; durationMs: number; ok: boolean }[];
+  };
+  feedback: { rating: AgentRunRating; comment: string | null; ratedAt: string } | null;
+  createdAt: string;
+}
+
+export interface AgentRunFilters {
+  outcome: AgentRunOutcome | "ALL";
+  rating: AgentRunRating | "UNRATED" | "ALL";
 }
 
 export const getShopAssistantStatus = async (signal?: AbortSignal) => {
@@ -27,4 +76,33 @@ export const generateShopBriefing = async (question: string): Promise<ShopBriefi
   );
 
   return response.data.briefing;
+};
+
+export const rateShopAnswer = async ({
+  runId,
+  rating,
+  comment,
+}: {
+  runId: string;
+  rating: AgentRunRating;
+  comment: string | null;
+}): Promise<AgentRun> => {
+  const response = await apiPatch<
+    { run: AgentRun },
+    { rating: AgentRunRating; comment: string | null }
+  >(`/api/admin/agent/runs/${encodeURIComponent(runId)}/feedback`, { rating, comment });
+
+  return response.data.run;
+};
+
+export const getAgentRuns = async (
+  filters: AgentRunFilters,
+  signal?: AbortSignal,
+): Promise<AgentRun[]> => {
+  const params = new URLSearchParams({ limit: "50" });
+  if (filters.outcome !== "ALL") params.set("outcome", filters.outcome);
+  if (filters.rating !== "ALL") params.set("rating", filters.rating);
+  const response = await apiGet<{ runs: AgentRun[] }>(`/api/admin/agent/runs?${params}`, signal);
+
+  return response.data.runs;
 };

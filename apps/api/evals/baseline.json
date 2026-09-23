@@ -1,0 +1,13 @@
+{
+  "offline": {
+    "retrievalRecallAtK": 0.925,
+    "retrievalHitRate": 0.925,
+    "retrievalMrr": 0.864,
+    "guardrailPrecision": 0.625,
+    "guardrailRecall": 0.714
+  },
+  "live": {
+    "passRate": 0,
+    "meanJudgeScore": 0
+  }
+}

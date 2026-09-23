@@ -1,5 +1,10 @@
 # Give the shop assistant reference notes with RAG
 
+> **Update:** this lesson explains the original keyword retriever, which is still the
+> first half of retrieval and the fallback. Notes now live in MongoDB and are edited at
+> `/admin/knowledge`; retrieval adds embedding similarity. Continue with the
+> [hybrid RAG lesson](HYBRID-RAG.md) after this one.
+
 Your first agent can read today's report. The production assistant can also explain how pickup, payment, order processing and product management work. It gets that information by searching a small collection of verified notes before asking the model to answer.
 
 **RAG means retrieval-augmented generation:** retrieve relevant information, add it to the model's input, then generate an answer using that information. Here, retrieval is an ordinary TypeScript function using keywords. The notes are compiled with the API; no vector database, embedding request, uploaded file or model training is needed.
@@ -121,7 +126,7 @@ For example, once opening hours are confirmed, add the exact confirmed schedule 
 
 Add retrieval cases to [shop-knowledge-retrieval.test.ts](../../tests/shop-knowledge-retrieval.test.ts): a direct question, a natural paraphrase, and an unrelated question that should not retrieve the new note. The optional `documents` argument lets tests use a small controlled corpus and prove that changing it changes the retrieved evidence.
 
-The documents are TypeScript data compiled with the API. After changing them, run the normal checks and rebuild/deploy the Render API. There is no upload or reindexing step, and the frontend does not need the knowledge file.
+`shop-knowledge.ts` is now the seed for the database: the API inserts any note whose ID is missing and never overwrites an admin's edits. To change a note that already exists in production, edit it at `/admin/knowledge` instead. Saving re-embeds it; no deployment is needed.
 
 ## 7. Try the live reads through MCP
 

@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { ApiClientError } from "../../../lib/api-client.js";
 import { formatShopDateTime } from "../../orders/order-format.js";
+import { AnswerFeedback } from "./AnswerFeedback.js";
 import { generateShopBriefing, getShopAssistantStatus } from "./shop-assistant-api.js";
 
 const questionSchema = z.object({
@@ -321,6 +322,7 @@ export const ShopAssistantCard = () => {
                       </AccordionDetails>
                     </Accordion>
                   )}
+                  {briefing.runId && <AnswerFeedback key={briefing.runId} runId={briefing.runId} />}
                   <Typography variant="caption" color="text.secondary">
                     Generated {formatShopDateTime(briefing.generatedAt)} IST. AI can make mistakes;
                     check shop information before acting.

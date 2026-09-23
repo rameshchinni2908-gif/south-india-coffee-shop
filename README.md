@@ -34,9 +34,10 @@ Remove the key and redeploy to disable it again.
 The browser calls `GET /api/admin/agent/status` to check availability and
 `POST /api/admin/agent/brief` with `{ "question": "How is the shop doing today?" }`
 to generate a briefing. Only active admins can use these routes. The backend
-uses `runShopAssistantAgent`: it searches the curated notes in
-`shop-knowledge.ts` with a small keyword retriever, includes at most four matching
-chunks in the question context, and offers two read tools for current facts.
+uses `runShopAssistantAgent`: it searches the knowledge notes stored in MongoDB with
+hybrid retrieval (keyword ranking plus embedding similarity, fused by rank), includes
+at most four matching chunks in the question context, and offers two read tools for
+current facts.
 `get_shop_menu` reads up to 30 active products, including sold-out sizes;
 `get_shop_summary` reads today's activity, daily/monthly completed sales, and
 up to ten low-stock variants. Both tools call existing services directly and
@@ -49,9 +50,31 @@ Answers are instructed to cite the supplied reference notes (`K1` etc.), menu
 guarantee that every generated claim is correct. Source limits and partial lists
 remain visible. Opening hours, address, contact details, refunds, and allergen
 information remain unconfirmed until the shop owner supplies verified facts.
-Knowledge changes require an API build and deployment; there is no file upload,
-embedding service, or model training in this implementation. The original
+Admins edit notes at **Knowledge** (`/admin/knowledge`); changes apply to the next
+question without a deployment. On startup the API adds any built-in note from
+`shop-knowledge.ts` that the database lacks (it never overwrites edits) and embeds
+pending notes with `OPENAI_EMBEDDING_MODEL` (default `text-embedding-3-small`, 512
+dimensions). Without `OPENAI_API_KEY`, or if embedding fails, retrieval falls back to
+keywords. Vector search runs in memory by default; for Atlas Vector Search run
+`npm run knowledge:index` and set `KNOWLEDGE_VECTOR_SEARCH=atlas`. See the
+[hybrid RAG lesson](apps/api/examples/admin-agent/HYBRID-RAG.md). The original
 `npm run agent:brief` terminal lesson retains its one-tool daily-report flow.
+
+## Assistant run log and evals
+
+Every assistant question is saved to an `AgentRun` record: the question, outcome
+(`ANSWERED`, `BLOCKED` by the guardrail, or `FAILED`), retrieved note IDs and scores,
+each model request with its latency and token counts, each live tool call, and the
+answer. Records expire after 90 days. Admins can rate an answer **Helpful** or
+**Not helpful** on the dashboard and review runs at **Assistant runs**
+(`/admin/assistant-runs`). The API routes are `GET /api/admin/agent/runs` and
+`PATCH /api/admin/agent/runs/:id/feedback` (admins only; an admin can rate only
+their own answers). Raw tool errors are never stored.
+
+`npm run eval` measures retrieval and guardrail quality against a golden dataset
+and fails when a score drops below `apps/api/evals/baseline.json`; the same check
+runs in `npm test`. `npm run eval -- --live` also grades real model answers. See
+the [evals guide](apps/api/evals/README.md).
 
 ## Read-only MCP endpoint
 

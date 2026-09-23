@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+import {
+  DEFAULT_EMBEDDING_DIMENSIONS,
+  DEFAULT_EMBEDDING_MODEL,
+} from "../agents/openai-embeddings.js";
+
+const blankAsUndefined = (value: unknown) =>
+  typeof value === "string" && value.trim() === "" ? undefined : value;
+
 const environmentSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
@@ -47,9 +55,26 @@ const environmentSchema = z.object({
     .optional()
     .transform((value) => value || undefined),
   OPENAI_MODEL: z.string().trim().min(1).default("gpt-5.4-mini"),
+  // Hybrid knowledge retrieval. Embeddings use OPENAI_API_KEY; without it retrieval is keyword-only.
+  // Blank values (e.g. `OPENAI_EMBEDDING_DIMENSIONS=` in .env) use the defaults.
+  OPENAI_EMBEDDING_MODEL: z.preprocess(
+    blankAsUndefined,
+    z.string().trim().min(1).default(DEFAULT_EMBEDDING_MODEL),
+  ),
+  OPENAI_EMBEDDING_DIMENSIONS: z.preprocess(
+    blankAsUndefined,
+    z.coerce.number().int().min(64).max(3072).default(DEFAULT_EMBEDDING_DIMENSIONS),
+  ),
+  // "memory" works on any MongoDB. "atlas" needs the index from `npm run knowledge:index`.
+  KNOWLEDGE_VECTOR_SEARCH: z.preprocess(
+    blankAsUndefined,
+    z.enum(["memory", "atlas"]).default("memory"),
+  ),
+  // Optional: without it the /api/mcp route is not mounted.
   MCP_SERVER_TOKEN: z
     .string()
     .trim()
+    .optional()
     .transform((value) => value || undefined)
     .refine(
       (value) => value === undefined || value.length >= 32,

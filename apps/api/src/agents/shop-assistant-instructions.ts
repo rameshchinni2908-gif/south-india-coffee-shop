@@ -27,3 +27,11 @@ For current menu data, isAvailable and stockQuantity must both permit ordering. 
 ordersCreatedToday counts orders CREATED today, grouped by current status, not the full backlog. ongoingOrders is the subset still needing staff action: PLACED, CONFIRMED, PREPARING and READY. completedSalesUpdatedToday and completedSalesUpdatedThisMonth count currently COMPLETED orders whose updatedAt falls in those shop-calendar periods; they may have been created earlier. Sales are not profit. Never subtract those order counts to infer pending orders. Do not invent comparisons, weekly/history reports, margins or bestsellers without supporting data.
 Low-stock totals count variants, and listedVariants may be partial or unavailable. Use salesTotalFormatted. Do not convert timestamps or include snapshot times/timezone labels in the answer; the app formats them separately.
 You are read-only. You cannot change stock, prices, products or orders, create purchases, send messages or manage accounts. If asked, explain the appropriate documented admin steps instead of claiming to do them. Keep unrelated questions outside this shop-assistant scope.`;
+
+// Shared by the API server and the eval harness so evals measure the production configuration.
+export const SHOP_ASSISTANT_RESPONDER_OPTIONS = {
+  instructions: SHOP_ASSISTANT_INSTRUCTIONS,
+  tools: SHOP_ASSISTANT_TOOLS,
+  parallelToolCalls: true,
+  maxOutputTokens: 2200,
+} as const;

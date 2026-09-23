@@ -1,5 +1,7 @@
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import PeopleOutlineRoundedIcon from "@mui/icons-material/PeopleOutlineRounded";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
@@ -116,6 +118,20 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
             <Button component={Link} to="/admin/dashboard" startIcon={<DashboardOutlinedIcon />}>
               Dashboard
             </Button>
+            {user.role === "ADMIN" && (
+              <Button
+                component={Link}
+                to="/admin/assistant-runs"
+                startIcon={<AutoAwesomeOutlinedIcon />}
+              >
+                Assistant runs
+              </Button>
+            )}
+            {user.role === "ADMIN" && (
+              <Button component={Link} to="/admin/knowledge" startIcon={<MenuBookOutlinedIcon />}>
+                Knowledge
+              </Button>
+            )}
           </Stack>
         </Container>
       </Box>

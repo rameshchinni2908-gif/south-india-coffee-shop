@@ -5,11 +5,9 @@ import type { Server } from "node:http";
 import pino from "pino";
 
 import { createApp } from "./app.js";
+import { createOpenAiEmbedder } from "./agents/openai-embeddings.js";
 import { createOpenAiResponder } from "./agents/openai-responses.js";
-import {
-  SHOP_ASSISTANT_INSTRUCTIONS,
-  SHOP_ASSISTANT_TOOLS,
-} from "./agents/shop-assistant-instructions.js";
+import { SHOP_ASSISTANT_RESPONDER_OPTIONS } from "./agents/shop-assistant-instructions.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
 import { createSipModule } from "./modules/secret-sip/index.js";
@@ -23,6 +21,8 @@ import {
   MongooseGameResultRepository,
   type GameModule,
 } from "./modules/game/index.js";
+import { MongooseAgentRunRepository } from "./repositories/agent-run-repository.js";
+import { MongooseKnowledgeNoteRepository } from "./repositories/knowledge-note-repository.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
 import { MongooseOrderRepository } from "./repositories/order-repository.js";
 import { MongooseProductRepository } from "./repositories/product-repository.js";
@@ -31,6 +31,7 @@ import { MongooseUserRepository } from "./repositories/user-repository.js";
 import { createAuthService } from "./services/auth-service.js";
 import { createAdminAgentService } from "./services/admin-agent-service.js";
 import { createCategoryService } from "./services/category-service.js";
+import { createKnowledgeService, type KnowledgeService } from "./services/knowledge-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
 import { createReportService } from "./services/report-service.js";
@@ -49,6 +50,24 @@ const closeServer = (server: Server): Promise<void> =>
       resolve();
     });
   });
+
+// Adds any built-in notes the database lacks, then embeds pending notes in the background.
+// Neither step can stop the API from starting; retrieval falls back to keywords meanwhile.
+const prepareKnowledgeBase = async (knowledgeService: KnowledgeService): Promise<void> => {
+  try {
+    const inserted = await knowledgeService.ensureBuiltInNotes();
+    if (inserted > 0) logger.info({ inserted }, "Built-in knowledge notes added");
+  } catch (error) {
+    logger.error({ err: error }, "Built-in knowledge notes could not be added");
+  }
+  if (!knowledgeService.getStatus().embeddings) return;
+  knowledgeService
+    .embedPending()
+    .then(({ embedded }) => {
+      if (embedded > 0) logger.info({ embedded }, "Knowledge notes embedded");
+    })
+    .catch(() => logger.warn("Knowledge notes could not be embedded; keyword retrieval remains"));
+};
 
 const startServer = async (): Promise<void> => {
   const environment = loadEnvironment();
@@ -78,18 +97,36 @@ const startServer = async (): Promise<void> => {
     timezone: environment.SHOP_TIMEZONE,
   });
   const staffAccountService = createStaffAccountService(userRepository);
+  const knowledgeService = createKnowledgeService({
+    repository: new MongooseKnowledgeNoteRepository(),
+    embedding: {
+      model: environment.OPENAI_EMBEDDING_MODEL,
+      dimensions: environment.OPENAI_EMBEDDING_DIMENSIONS,
+    },
+    vectorSearch: environment.KNOWLEDGE_VECTOR_SEARCH,
+    ...(environment.OPENAI_API_KEY
+      ? {
+          embed: createOpenAiEmbedder({
+            apiKey: environment.OPENAI_API_KEY,
+            model: environment.OPENAI_EMBEDDING_MODEL,
+            dimensions: environment.OPENAI_EMBEDDING_DIMENSIONS,
+          }),
+        }
+      : {}),
+  });
+  await prepareKnowledgeBase(knowledgeService);
   const adminAgentService = createAdminAgentService({
     reportService,
     productService,
+    agentRunRepository: new MongooseAgentRunRepository(),
+    retrieveKnowledge: knowledgeService.retrieve,
+    model: environment.OPENAI_MODEL,
     ...(environment.OPENAI_API_KEY
       ? {
           respond: createOpenAiResponder({
             apiKey: environment.OPENAI_API_KEY,
             model: environment.OPENAI_MODEL,
-            instructions: SHOP_ASSISTANT_INSTRUCTIONS,
-            tools: SHOP_ASSISTANT_TOOLS,
-            parallelToolCalls: true,
-            maxOutputTokens: 2200,
+            ...SHOP_ASSISTANT_RESPONDER_OPTIONS,
           }),
         }
       : {}),
@@ -130,6 +167,7 @@ const startServer = async (): Promise<void> => {
     reportService,
     staffAccountService,
     adminAgentService,
+    knowledgeService,
     ...(environment.MCP_SERVER_TOKEN
       ? { mcp: { productService, reportService, token: environment.MCP_SERVER_TOKEN } }
       : {}),

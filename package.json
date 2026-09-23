@@ -13,6 +13,8 @@
   "scripts": {
     "agent:brief": "npm run agent:brief --workspace @south-india-coffee-shop/api --",
     "agent:mcp": "npm run agent:mcp --workspace @south-india-coffee-shop/api",
+    "eval": "npm run eval --workspace @south-india-coffee-shop/api --",
+    "knowledge:index": "npm run knowledge:index --workspace @south-india-coffee-shop/api",
     "dev:api": "npm run dev --workspace @south-india-coffee-shop/api",
     "dev:web": "npm run dev --workspace @south-india-coffee-shop/web",
     "docker:up": "docker compose up --build",

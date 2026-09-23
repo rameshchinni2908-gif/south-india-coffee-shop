@@ -9,6 +9,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { notFoundHandler } from "./middleware/not-found-handler.js";
 import { createAdminAgentRouter } from "./routes/admin-agent-routes.js";
 import { createAdminCategoryRouter } from "./routes/admin-category-routes.js";
+import { createAdminKnowledgeRouter } from "./routes/admin-knowledge-routes.js";
 import { createAdminOrderRouter } from "./routes/admin-order-routes.js";
 import { createAdminProductRouter } from "./routes/admin-product-routes.js";
 import { createAdminReportRouter } from "./routes/admin-report-routes.js";
@@ -22,6 +23,7 @@ import { createMcpRouter } from "./routes/mcp-route.js";
 import type { AuthService } from "./services/auth-service.js";
 import type { AdminAgentService } from "./services/admin-agent-service.js";
 import type { CategoryService } from "./services/category-service.js";
+import type { KnowledgeService } from "./services/knowledge-service.js";
 import type { ProductService } from "./services/product-service.js";
 import type { OrderService } from "./services/order-service.js";
 import type { ReportService } from "./services/report-service.js";
@@ -45,6 +47,7 @@ interface CreateAppOptions {
     token: string;
   };
   adminAgentService?: AdminAgentService;
+  knowledgeService?: KnowledgeService;
   staffAccountService?: StaffAccountService;
   gameRouter?: Router;
   arenaRouter?: Router;
@@ -62,6 +65,7 @@ export const createApp = ({
   reportService,
   mcp,
   adminAgentService,
+  knowledgeService,
   staffAccountService,
   gameRouter,
   arenaRouter,
@@ -132,6 +136,13 @@ export const createApp = ({
 
   if (adminAgentService) {
     app.use("/api/admin/agent", createAdminAgentRouter(authService, adminAgentService, clientUrl));
+  }
+
+  if (knowledgeService) {
+    app.use(
+      "/api/admin/knowledge",
+      createAdminKnowledgeRouter(authService, knowledgeService, clientUrl),
+    );
   }
 
   if (mcp) {

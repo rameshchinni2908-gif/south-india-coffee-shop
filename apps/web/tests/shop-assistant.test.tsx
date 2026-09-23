@@ -319,4 +319,51 @@ describe("shop assistant", () => {
     expect(await screen.findByText("General guidance")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /References retrieved/ })).not.toBeInTheDocument();
   });
+
+  it("offers feedback only for logged runs and sends a not-helpful comment", async () => {
+    const runId = "64b000000000000000000001";
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+      .mockResolvedValueOnce(response({ briefing: { ...briefing, runId } }))
+      .mockResolvedValueOnce(response({ run: { id: runId } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const visitor = userEvent.setup();
+    renderAssistant();
+
+    await visitor.click(await screen.findByRole("button", { name: "Ask assistant" }));
+    await visitor.click(await screen.findByRole("button", { name: "Not helpful" }));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await visitor.type(
+      screen.getByRole("textbox", { name: "What was wrong? (optional)" }),
+      "  Missed the low-stock item  ",
+    );
+    await visitor.click(screen.getByRole("button", { name: "Send feedback" }));
+
+    expect(await screen.findByText(/feedback was saved/)).toBeInTheDocument();
+    // The feedback must never re-submit the surrounding (paid) question form.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[2]?.[0]).toMatch(
+      new RegExp(`/api/admin/agent/runs/${runId}/feedback$`),
+    );
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: "PATCH",
+      body: JSON.stringify({ rating: "DOWN", comment: "Missed the low-stock item" }),
+    });
+  });
+
+  it("does not show feedback when the run was not logged", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+        .mockResolvedValueOnce(response({ briefing })),
+    );
+    renderAssistant();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Ask assistant" }));
+    expect(await screen.findByRole("heading", { name: "Your answer" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Rate this answer" })).not.toBeInTheDocument();
+  });
 });

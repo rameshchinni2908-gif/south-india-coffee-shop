@@ -28,6 +28,8 @@ const createService = () => ({
     usedShopData: true,
     generatedAt: "2026-09-10T08:00:00.000Z",
   }),
+  listRuns: vi.fn<AdminAgentService["listRuns"]>().mockResolvedValue([]),
+  rateRun: vi.fn<AdminAgentService["rateRun"]>(),
 });
 const createAgentApp = (adminAgentService: AdminAgentService = createService()) =>
   createApp({
@@ -117,7 +119,7 @@ describe("production admin agent API", () => {
         error: null,
       });
       expect(response.headers["cache-control"]).toBe("no-store");
-      expect(service.createBriefing).toHaveBeenCalledWith("What needs attention?");
+      expect(service.createBriefing).toHaveBeenCalledWith("What needs attention?", "admin");
     },
   );
 
@@ -218,5 +220,71 @@ describe("production admin agent API", () => {
     expect(response.status).toBe(503);
     expect(response.body.error.code).toBe("AGENT_UNAVAILABLE");
     expect(response.text).not.toMatch(/secret-api-key|private-provider-body|stack/);
+  });
+
+  describe("agent run log", () => {
+    it("lists runs with validated filters for admins only", async () => {
+      const service = createService();
+      const app = createAgentApp(service);
+
+      const response = await request(app)
+        .get("/api/admin/agent/runs?outcome=FAILED&rating=DOWN&limit=5")
+        .set("Cookie", "staff_access_token=admin");
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({ runs: [] });
+      expect(service.listRuns).toHaveBeenCalledWith({
+        outcome: "FAILED",
+        rating: "DOWN",
+        limit: 5,
+      });
+
+      expect(
+        (
+          await request(app)
+            .get("/api/admin/agent/runs?limit=500")
+            .set("Cookie", "staff_access_token=admin")
+        ).status,
+      ).toBe(400);
+      expect(
+        (await request(app).get("/api/admin/agent/runs").set("Cookie", "staff_access_token=staff"))
+          .status,
+      ).toBe(403);
+    });
+
+    it("rates a run as the signed-in admin and treats a blank comment as none", async () => {
+      const service = createService();
+      const app = createAgentApp(service);
+
+      const response = await request(app)
+        .patch("/api/admin/agent/runs/64b000000000000000000001/feedback")
+        .set("Cookie", "staff_access_token=admin-two")
+        .send({ rating: "UP", comment: "   " });
+      expect(response.status).toBe(200);
+      expect(service.rateRun).toHaveBeenCalledWith("64b000000000000000000001", "admin-two", {
+        rating: "UP",
+        comment: null,
+      });
+
+      for (const [path, body] of [
+        ["/api/admin/agent/runs/not-an-id/feedback", { rating: "UP" }],
+        ["/api/admin/agent/runs/64b000000000000000000001/feedback", { rating: "MAYBE" }],
+        ["/api/admin/agent/runs/64b000000000000000000001/feedback", { rating: "UP", extra: 1 }],
+      ] as const) {
+        expect(
+          (await request(app).patch(path).set("Cookie", "staff_access_token=admin").send(body))
+            .status,
+        ).toBe(400);
+      }
+      expect(
+        (
+          await request(app)
+            .patch("/api/admin/agent/runs/64b000000000000000000001/feedback")
+            .set("Cookie", "staff_access_token=admin")
+            .set("Origin", "https://untrusted.example.com")
+            .send({ rating: "UP" })
+        ).status,
+      ).toBe(403);
+      expect(service.rateRun).toHaveBeenCalledTimes(1);
+    });
   });
 });

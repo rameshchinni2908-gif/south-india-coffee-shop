@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelResponse, Respond } from "../src/agents/openai-responses.js";
+import type { AgentRunRepository } from "../src/repositories/agent-run-repository.js";
 import { createAdminAgentService } from "../src/services/admin-agent-service.js";
 import type { ReportService } from "../src/services/report-service.js";
 import type { ProductService } from "../src/services/product-service.js";
@@ -78,7 +79,7 @@ describe("production admin agent service", () => {
     const service = createAdminAgentService(deps);
 
     expect(service.getStatus()).toEqual({ enabled: true });
-    expect(await service.createBriefing("  What is low on stock?  ")).toMatchObject({
+    expect(await service.createBriefing("  What is low on stock?  ", "admin-1")).toMatchObject({
       answer: "Coffee powder — Regular is at 5.",
       usedShopData: true,
       generatedAt: "2026-09-10T08:00:00.000Z",
@@ -118,7 +119,7 @@ describe("production admin agent service", () => {
       productService: deps.productService,
     });
     expect(service.getStatus()).toEqual({ enabled: false });
-    await expect(service.createBriefing("Summarize today")).rejects.toMatchObject({
+    await expect(service.createBriefing("Summarize today", "admin-1")).rejects.toMatchObject({
       statusCode: 503,
       code: "AGENT_NOT_CONFIGURED",
     });
@@ -128,7 +129,9 @@ describe("production admin agent service", () => {
   it("dates scope-only responses at generation time without reading the database", async () => {
     const deps = createDependencies();
     deps.respond.mockResolvedValue(modelAnswer);
-    expect(await createAdminAgentService(deps).createBriefing("Explain your scope")).toMatchObject({
+    expect(
+      await createAdminAgentService(deps).createBriefing("Explain your scope", "admin-1"),
+    ).toMatchObject({
       usedShopData: false,
       generatedAt: "2026-09-10T08:01:00.000Z",
     });
@@ -147,15 +150,15 @@ describe("production admin agent service", () => {
       )
       .mockResolvedValue(modelAnswer);
     const service = createAdminAgentService(deps);
-    const first = service.createBriefing("First question");
-    await expect(service.createBriefing("Second question")).rejects.toMatchObject({
+    const first = service.createBriefing("First question", "admin-1");
+    await expect(service.createBriefing("Second question", "admin-1")).rejects.toMatchObject({
       statusCode: 429,
       code: "AGENT_BUSY",
     });
     expect(deps.respond).toHaveBeenCalledTimes(1);
     finish(modelAnswer);
     await first;
-    await expect(service.createBriefing("Third question")).resolves.toMatchObject({
+    await expect(service.createBriefing("Third question", "admin-1")).resolves.toMatchObject({
       usedShopData: false,
     });
   });
@@ -166,14 +169,14 @@ describe("production admin agent service", () => {
       .mockRejectedValueOnce(new Error("secret-key private provider body"))
       .mockResolvedValue(modelAnswer);
     const service = createAdminAgentService(deps);
-    await expect(service.createBriefing("Summarize today")).rejects.toMatchObject({
+    await expect(service.createBriefing("Summarize today", "admin-1")).rejects.toMatchObject({
       statusCode: 503,
       code: "AGENT_UNAVAILABLE",
       message: "The shop assistant could not complete the briefing. Please try again later.",
     });
     expect(deps.respond).toHaveBeenCalledTimes(1);
     expect(deps.reportService.getSummary).not.toHaveBeenCalled();
-    await expect(service.createBriefing("Explain your scope")).resolves.toBeDefined();
+    await expect(service.createBriefing("Explain your scope", "admin-1")).resolves.toBeDefined();
   });
 
   it("does not send database failures to the model", async () => {
@@ -181,7 +184,7 @@ describe("production admin agent service", () => {
     deps.respond.mockResolvedValue(toolRequest);
     deps.reportService.getSummary.mockRejectedValue(new Error("mongodb://private-credentials"));
     await expect(
-      createAdminAgentService(deps).createBriefing("Summarize today"),
+      createAdminAgentService(deps).createBriefing("Summarize today", "admin-1"),
     ).rejects.toMatchObject({ code: "AGENT_UNAVAILABLE" });
     expect(deps.respond).toHaveBeenCalledTimes(1);
   });
@@ -197,7 +200,7 @@ describe("production admin agent service", () => {
     deps.respond.mockResolvedValueOnce(toolRequest).mockResolvedValue(modelAnswer);
     const service = createAdminAgentService(deps);
 
-    const first = service.createBriefing("Summarize today");
+    const first = service.createBriefing("Summarize today", "admin-1");
     const timedOut = expect(first).rejects.toMatchObject({
       statusCode: 503,
       code: "AGENT_UNAVAILABLE",
@@ -209,7 +212,7 @@ describe("production admin agent service", () => {
 
     await timedOut;
     expect(deps.respond).toHaveBeenCalledTimes(1);
-    await expect(service.createBriefing("Explain your scope")).resolves.toMatchObject({
+    await expect(service.createBriefing("Explain your scope", "admin-1")).resolves.toMatchObject({
       usedShopData: false,
     });
     expect(deps.respond).toHaveBeenCalledTimes(2);
@@ -220,10 +223,161 @@ describe("production admin agent service", () => {
     "rejects invalid questions before paid requests",
     async (question) => {
       const deps = createDependencies();
-      await expect(createAdminAgentService(deps).createBriefing(question)).rejects.toMatchObject({
+      await expect(
+        createAdminAgentService(deps).createBriefing(question, "admin-1"),
+      ).rejects.toMatchObject({
         statusCode: 400,
       });
       expect(deps.respond).not.toHaveBeenCalled();
     },
   );
+
+  describe("agent run log", () => {
+    const createRunLog = () => ({
+      create: vi.fn<AgentRunRepository["create"]>().mockResolvedValue("run-1"),
+      list: vi.fn<AgentRunRepository["list"]>().mockResolvedValue([]),
+      setFeedback: vi.fn<AgentRunRepository["setFeedback"]>(),
+    });
+    const createClock = (...readings: number[]) => {
+      const values = [...readings];
+      return () => values.shift() ?? readings.at(-1) ?? 0;
+    };
+
+    it("records retrieval, tool, model and token details for an answered run", async () => {
+      const deps = createDependencies();
+      const runLog = createRunLog();
+      deps.respond
+        .mockResolvedValueOnce({ ...toolRequest, usage: { input_tokens: 900, output_tokens: 20 } })
+        .mockResolvedValueOnce({
+          ...modelAnswer,
+          usage: { input_tokens: 1200, output_tokens: 60 },
+        });
+      const service = createAdminAgentService({
+        ...deps,
+        agentRunRepository: runLog,
+        model: "test-model",
+        // run start, retrieval start/end, model 1 start/end, tool start/end, model 2 start/end, run end
+        elapsed: createClock(0, 0, 5, 10, 510, 520, 560, 570, 1270, 1300),
+      });
+
+      const briefing = await service.createBriefing("What is low on stock?", "admin-1");
+
+      expect(briefing.runId).toBe("run-1");
+      expect(runLog.create).toHaveBeenCalledTimes(1);
+      const saved = runLog.create.mock.calls[0]![0];
+      expect(saved).toMatchObject({
+        adminId: "admin-1",
+        question: "What is low on stock?",
+        outcome: "ANSWERED",
+        answer: "Coffee powder — Regular is at 5.",
+        failureReason: null,
+        sourceIds: expect.arrayContaining(["R1"]),
+        model: "test-model",
+        totalDurationMs: 1300,
+        inputTokens: 2100,
+        outputTokens: 80,
+        createdAt: new Date("2026-09-10T08:01:00.000Z"),
+      });
+      expect(saved.trace.retrievedKnowledge.map(({ id }) => id)).toContain(
+        "low-stock-report-semantics",
+      );
+      // Without an embedder the default retriever is keyword-only and says why.
+      expect(saved.trace.retrieval).toEqual({
+        mode: "keyword",
+        durationMs: 5,
+        embeddingTokens: 0,
+        fallbackReason: "Embeddings are not configured.",
+      });
+      expect(saved.trace.modelCalls).toEqual([
+        {
+          durationMs: 500,
+          ok: true,
+          inputTokens: 900,
+          outputTokens: 20,
+          requestedTools: ["get_shop_summary"],
+        },
+        { durationMs: 700, ok: true, inputTokens: 1200, outputTokens: 60, requestedTools: [] },
+      ]);
+      expect(saved.trace.toolCalls).toEqual([
+        { name: "get_shop_summary", durationMs: 40, ok: true },
+      ]);
+    });
+
+    it("records guardrail refusals as blocked runs without a model request", async () => {
+      const deps = createDependencies();
+      const runLog = createRunLog();
+      const service = createAdminAgentService({ ...deps, agentRunRepository: runLog });
+
+      await service.createBriefing("Please cancel order 42", "admin-1");
+
+      expect(deps.respond).not.toHaveBeenCalled();
+      expect(runLog.create.mock.calls[0]![0]).toMatchObject({
+        outcome: "BLOCKED",
+        inputTokens: 0,
+        trace: { modelCalls: [], toolCalls: [] },
+      });
+    });
+
+    it("records failures without storing raw tool errors", async () => {
+      const deps = createDependencies();
+      const runLog = createRunLog();
+      deps.reportService.getSummary.mockRejectedValue(new Error("mongodb://private-host secret"));
+      deps.respond.mockResolvedValueOnce(toolRequest);
+      const service = createAdminAgentService({ ...deps, agentRunRepository: runLog });
+
+      await expect(service.createBriefing("Summarize today", "admin-1")).rejects.toMatchObject({
+        code: "AGENT_UNAVAILABLE",
+      });
+
+      const saved = runLog.create.mock.calls[0]![0];
+      expect(saved).toMatchObject({
+        outcome: "FAILED",
+        answer: null,
+        failureReason: "A live shop tool failed.",
+      });
+      expect(saved.trace.toolCalls).toEqual([
+        expect.objectContaining({ name: "get_shop_summary", ok: false }),
+      ]);
+      expect(JSON.stringify(saved)).not.toMatch(/private-host|secret/);
+    });
+
+    it("still returns the answer when saving the run fails", async () => {
+      const deps = createDependencies();
+      const runLog = createRunLog();
+      runLog.create.mockRejectedValue(new Error("database down"));
+      deps.respond.mockResolvedValue(modelAnswer);
+      const service = createAdminAgentService({ ...deps, agentRunRepository: runLog });
+
+      const briefing = await service.createBriefing("Explain your scope", "admin-1");
+
+      expect(briefing.answer).toBe("Coffee powder — Regular is at 5.");
+      expect(briefing).not.toHaveProperty("runId");
+    });
+
+    it("lets only the asking admin rate a run", async () => {
+      const runLog = createRunLog();
+      runLog.setFeedback.mockResolvedValue(null);
+      const service = createAdminAgentService({
+        ...createDependencies(),
+        agentRunRepository: runLog,
+      });
+
+      await expect(
+        service.rateRun("64b000000000000000000001", "admin-2", { rating: "DOWN", comment: null }),
+      ).rejects.toMatchObject({ statusCode: 404, code: "AGENT_RUN_NOT_FOUND" });
+      expect(runLog.setFeedback).toHaveBeenCalledWith("64b000000000000000000001", "admin-2", {
+        rating: "DOWN",
+        comment: null,
+        ratedAt: new Date("2026-09-10T08:01:00.000Z"),
+      });
+    });
+
+    it("reports a missing run log instead of pretending there are no runs", async () => {
+      const service = createAdminAgentService(createDependencies());
+      await expect(service.listRuns({ limit: 10 })).rejects.toMatchObject({
+        statusCode: 503,
+        code: "AGENT_RUN_LOG_NOT_CONFIGURED",
+      });
+    });
+  });
 });
