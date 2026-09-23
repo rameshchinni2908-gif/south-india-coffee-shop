@@ -66,7 +66,15 @@ describe("menu on slow connections", () => {
       "href",
       "#menu-results",
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The prefetched requests are reused; the only new one is voice ordering's full menu list.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(Object.fromEntries(new URL(String(fetchMock.mock.calls[2]?.[0])).searchParams)).toEqual({
+      page: "1",
+      limit: "100",
+      available: "all",
+      sortBy: "name",
+      sortOrder: "asc",
+    });
     const request = new URL(String(fetchMock.mock.calls[1]?.[0]));
     expect(Object.fromEntries(request.searchParams)).toMatchObject({
       search: "filter",
@@ -82,7 +90,7 @@ describe("menu on slow connections", () => {
       pending.forEach((resolve) => resolve());
     });
     expect(await screen.findByRole("heading", { name: "No menu items found" })).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it.each(["/cart", "/admin/login", "/games", "/track-order"])(
@@ -107,7 +115,8 @@ describe("menu on slow connections", () => {
     act(() => onlineManager.setOnline(true));
     expect(await screen.findByRole("heading", { name: "No menu items found" })).toBeVisible();
     await waitFor(() => expect(screen.queryByText(/You’re offline/)).not.toBeInTheDocument());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Categories, the filtered menu, and the voice-ordering menu list; none repeated.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("provides patient feedback for a slow API without restarting the request", () => {

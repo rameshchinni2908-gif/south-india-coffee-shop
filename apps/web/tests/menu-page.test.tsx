@@ -387,15 +387,14 @@ describe("customer menu", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
-  it("stores applied search and category filters in the request URL", async () => {
+  // Filters apply immediately (no Apply button); a search from the URL is kept.
+  it("applies a category immediately and keeps the URL search in the request", async () => {
     const fetchMock = installSuccessfulFetch();
     const user = userEvent.setup();
-    renderMenu();
+    renderMenu("/?search=filter+coffee");
 
     await screen.findByRole("heading", { name: "Filter Coffee" });
-    await user.type(screen.getByLabelText("Search the menu"), "filter coffee");
     await user.click(screen.getByRole("button", { name: "Coffee" }));
-    await user.click(screen.getByRole("button", { name: "Apply filters" }));
 
     await waitFor(() => {
       expect(

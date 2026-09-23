@@ -12,7 +12,6 @@ import { BEAN_BLASTERS_PATH } from "./features/bean-blasters/arena-paths.js";
 import { BEAN_MERGE_PATH } from "./features/bean-merge/merge-paths.js";
 import { BEAN_SWEEPER_PATH } from "./features/bean-sweeper/bean-sweeper-paths.js";
 import { GAMES_PATH } from "./features/kaapi-karts/game-paths.js";
-import { GamesHubPage } from "./features/kaapi-karts/GamesHubPage.js";
 import { queryClient } from "./lib/query-client.js";
 import { theme } from "./theme.js";
 
@@ -89,6 +88,14 @@ const AdminStaffPage = lazy(async () => {
 });
 
 // Lazy so neither the game screens nor the canvas engine reach the main chunk.
+// Lazy like the game routes: the hub imports every game's contract, which must not ship
+// to menu visitors (see scripts/check-game-bundle.mjs).
+const GamesHubPage = lazy(async () => {
+  const module = await import("./features/kaapi-karts/GamesHubPage.js");
+
+  return { default: module.GamesHubPage };
+});
+
 const KaapiKartsRoutes = lazy(async () => {
   const module = await import("./features/kaapi-karts/kaapi-karts-routes.js");
 

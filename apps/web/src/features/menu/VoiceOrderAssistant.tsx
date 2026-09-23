@@ -333,7 +333,7 @@ export const VoiceOrderAssistant = ({ products }: { products: Product[] }) => {
         sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
       >
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 850 }}>
+          <Typography component="h2" variant="h6" sx={{ fontWeight: 850 }}>
             Order by voice
           </Typography>
           <Typography variant="body2" color="text.secondary">
