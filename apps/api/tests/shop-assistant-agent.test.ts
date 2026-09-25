@@ -123,7 +123,9 @@ describe("shop assistant RAG and live tools", () => {
     const result = await runShopAssistantAgent("What does coffee cost?", d);
     expect(d.getShopMenu).toHaveBeenCalledTimes(1);
     expect(d.getShopSummary).not.toHaveBeenCalled();
-    expect(d.respond.mock.calls[1]?.[0]).toMatchObject({ toolChoice: "none" });
+    // Round 2 may still act (for example, propose a change); here the model just answers.
+    expect(d.respond.mock.calls[1]?.[0]).toMatchObject({ toolChoice: "auto" });
+    expect(d.respond).toHaveBeenCalledTimes(2);
     expect(d.respond.mock.calls[1]?.[0].input).toContainEqual({
       type: "function_call_output",
       call_id: "get_shop_menu",
@@ -188,12 +190,28 @@ describe("shop assistant RAG and live tools", () => {
     expect(d.respond).toHaveBeenCalledTimes(1);
   });
 
-  it("prevents extra tool rounds", async () => {
+  it("reads each live tool at most once per question", async () => {
     const d = deps();
     d.respond.mockResolvedValue(request(call("get_shop_menu")));
-    await expect(runShopAssistantAgent("Check menu", d)).rejects.toThrow("tool round");
+    await expect(runShopAssistantAgent("Check menu", d)).rejects.toThrow("read once");
     expect(d.getShopMenu).toHaveBeenCalledTimes(1);
     expect(d.respond).toHaveBeenCalledTimes(2);
+  });
+
+  it("switches tools off after two rounds and rejects a third", async () => {
+    const d = deps();
+    d.respond
+      .mockResolvedValueOnce(request(call("get_shop_menu")))
+      .mockResolvedValueOnce(request(call("get_shop_summary")))
+      .mockResolvedValueOnce(request(call("get_shop_summary", "{}", "again")));
+    await expect(runShopAssistantAgent("Check everything", d)).rejects.toThrow(
+      "exceeded the permitted tool rounds",
+    );
+    expect(d.respond.mock.calls.map(([request]) => request.toolChoice)).toEqual([
+      "auto",
+      "auto",
+      "none",
+    ]);
   });
 
   it("rejects fabricated source IDs", async () => {
@@ -358,6 +376,63 @@ describe("shop assistant change proposals", () => {
         expiresAt: "2026-09-13T07:17:00.000Z",
       },
     ]);
+  });
+
+  it("reads the menu first, then proposes in the second round", async () => {
+    const d = withProposals();
+    d.retrieveKnowledge.mockReturnValue([]);
+    d.proposeChange.mockResolvedValue(
+      proposed("p1", "Filter coffee: Regular unavailable → available"),
+    );
+    d.respond
+      .mockResolvedValueOnce(request(call("get_shop_menu")))
+      .mockResolvedValueOnce(
+        request(
+          call(
+            "propose_availability_change",
+            JSON.stringify({
+              productName: "Filter coffee",
+              variantName: "Regular",
+              isAvailable: true,
+            }),
+          ),
+        ),
+      )
+      .mockResolvedValueOnce(message("I've prepared this change for your approval. [M1]"));
+
+    const result = await runShopAssistantAgent("Mark Filter Coffee Regular available", d);
+
+    expect(d.getShopMenu).toHaveBeenCalledTimes(1);
+    expect(d.proposeChange).toHaveBeenCalledExactlyOnceWith({
+      kind: "AVAILABILITY",
+      productName: "Filter coffee",
+      variantName: "Regular",
+      isAvailable: true,
+    });
+    expect(d.respond.mock.calls.map(([request]) => request.toolChoice)).toEqual([
+      "auto",
+      "auto",
+      "none",
+    ]);
+    expect(result.proposals).toHaveLength(1);
+    expect(result.sources).toContainEqual(expect.objectContaining({ id: "M1" }));
+  });
+
+  it("counts the proposal limit across both rounds", async () => {
+    const d = withProposals();
+    d.proposeChange.mockResolvedValue(proposed("p", "change"));
+    d.respond
+      .mockResolvedValueOnce(
+        request(...["a", "b"].map((id) => call("propose_stock_update", stockArgs, id))),
+      )
+      .mockResolvedValueOnce(
+        request(...["c", "d"].map((id) => call("propose_stock_update", stockArgs, id))),
+      );
+
+    await expect(runShopAssistantAgent("Restock everything", d)).rejects.toThrow(
+      "At most 3 changes",
+    );
+    expect(d.proposeChange).toHaveBeenCalledTimes(2);
   });
 
   it("reports invalid values back to the model instead of failing the answer", async () => {

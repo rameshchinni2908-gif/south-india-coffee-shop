@@ -30,6 +30,8 @@ export interface ShopAssistantSource {
 }
 
 const READ_TOOL_NAMES = ["get_shop_summary", "get_shop_menu"] as const;
+// Round 1 may read live data; round 2 can then act on it (for example, propose a change).
+export const MAX_TOOL_ROUNDS = 2;
 const toolCallSchema = z.object({
   type: z.literal("function_call"),
   name: z.enum([...READ_TOOL_NAMES, ...PROPOSAL_TOOL_NAMES]),
@@ -105,13 +107,18 @@ export const runShopAssistantAgent = async (
     },
   ];
   const signal = AbortSignal.timeout(90_000);
-  const first = await respond({ input, toolChoice: "auto", signal });
-  const requestedCalls = first.output.filter((item) => item.type === "function_call");
+  let response = await respond({ input, toolChoice: "auto", signal });
   let generatedAt = now().toISOString();
-  let response = first;
   const proposals: ProposalSummary[] = [];
+  // Limits apply to the whole question, not to each round.
+  const readsDone = new Set<string>();
+  let proposalCount = 0;
 
-  if (requestedCalls.length > 0) {
+  // Two rounds let the model read the menu first and then propose a change with exact names.
+  for (let round = 1; ; round += 1) {
+    const requestedCalls = response.output.filter((item) => item.type === "function_call");
+    if (requestedCalls.length === 0) break;
+    if (round > MAX_TOOL_ROUNDS) throw new Error("The model exceeded the permitted tool rounds.");
     if (requestedCalls.length > READ_TOOL_NAMES.length + MAX_PROPOSALS_PER_RUN) {
       throw new Error("Too many tool calls were requested.");
     }
@@ -124,7 +131,11 @@ export const runShopAssistantAgent = async (
     ) {
       throw new Error("Duplicate tool calls are not permitted.");
     }
-    if (calls.length - readCalls.length > MAX_PROPOSALS_PER_RUN) {
+    if (readCalls.some((call) => readsDone.has(call.name))) {
+      throw new Error("Each live shop tool can be read once per question.");
+    }
+    proposalCount += calls.length - readCalls.length;
+    if (proposalCount > MAX_PROPOSALS_PER_RUN) {
       throw new Error(`At most ${MAX_PROPOSALS_PER_RUN} changes can be proposed at once.`);
     }
     const proposedChanges = new Map<string, ProposedChange | ProposalToolResult>();
@@ -150,7 +161,7 @@ export const runShopAssistantAgent = async (
       }
     }
 
-    input.push(...first.output);
+    input.push(...response.output);
     for (const call of calls) {
       signal.throwIfAborted();
       const change = proposedChanges.get(call.call_id);
@@ -173,6 +184,7 @@ export const runShopAssistantAgent = async (
         });
         continue;
       }
+      readsDone.add(call.name);
       let data: ShopAssistantSnapshot | ShopMenuSnapshot;
       let source: ShopAssistantSource;
       if (call.name === "get_shop_summary") {
@@ -203,10 +215,12 @@ export const runShopAssistantAgent = async (
       });
     }
     signal.throwIfAborted();
-    response = await respond({ input, toolChoice: "none", signal });
-    if (response.output.some((item) => item.type === "function_call")) {
-      throw new Error("The model exceeded the permitted tool round.");
-    }
+    // After the last permitted round, tools are switched off so the model must answer.
+    response = await respond({
+      input,
+      toolChoice: round < MAX_TOOL_ROUNDS ? "auto" : "none",
+      signal,
+    });
   }
 
   const answer = checkShopAssistantAnswer(readModelAnswer(response));

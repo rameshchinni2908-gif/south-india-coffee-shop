@@ -117,8 +117,9 @@ for local stdio usage and the remaining steps before connecting a remote
 Responses API agent.
 
 Generation runs only when requested, with no automatic retry. A run makes at
-most two model requests and one round of live tools: at most one menu read and
-one report read. Reference-only questions can finish with one model request and
+most three model requests and two tool rounds (so it can read the menu, then
+propose a change): at most one menu read, one report read and three proposals.
+Most questions finish in two model requests. Reference-only questions can finish with one model request and
 no live tool calls. The API permits five attempts per admin per 15 minutes and
 one active answer per process. These controls
 reset when the service restarts and are not a monthly spending cap. OpenAI API

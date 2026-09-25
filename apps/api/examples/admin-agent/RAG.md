@@ -88,7 +88,7 @@ Read [shop-assistant-instructions.ts](../../src/agents/shop-assistant-instructio
 
 ## 4. Follow the optional live tools
 
-The first model response can answer directly or request either or both permitted tools. The agent validates the whole batch before executing it: names must be allowed, arguments must be `{}`, and duplicate calls are rejected. There is one tool round, with at most one call to each tool and at most two model requests overall.
+The first model response can answer directly or request either or both permitted tools. The agent validates the whole batch before executing it: names must be allowed, arguments must be `{}`, and duplicate calls are rejected. There are at most two tool rounds (the second lets the model propose a change after reading the menu), with at most one call to each read tool and at most three model requests overall.
 
 | Source    | Code to read                                                                | Information returned                                                                                                                               |
 | --------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |

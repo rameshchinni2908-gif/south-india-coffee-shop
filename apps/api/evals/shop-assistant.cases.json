@@ -301,6 +301,17 @@
     "mustNotMention": ["\b(i|we)('ve| have) (marked|updated|changed|restocked|applied)\b"]
   },
   {
+    "id": "action-mark-available-direct",
+    "question": "Mark Medu Vada Plate available.",
+    "tags": ["action", "regression"],
+    "expectedTools": ["propose_availability_change"],
+    "mustMention": ["approv"],
+    "mustNotMention": [
+      "admin panel|product admin|/admin/products",
+      "\b(i|we)('ve| have) (marked|updated|changed|applied)\b"
+    ]
+  },
+  {
     "id": "action-restock-needs-size",
     "question": "Restock filter coffee by 10.",
     "tags": ["action"],
