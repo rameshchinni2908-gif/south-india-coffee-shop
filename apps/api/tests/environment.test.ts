@@ -32,6 +32,16 @@ describe("loadEnvironment", () => {
     expect(environment.MCP_SERVER_TOKEN).toBeUndefined();
   });
 
+  it("treats a blank prep brief token as unset and rejects a short one", () => {
+    const base = { MONGODB_URI: "mongodb://localhost:27017/test", JWT_SECRET: VALID_JWT_SECRET };
+    expect(loadEnvironment({ ...base, PREP_BRIEF_CRON_TOKEN: "" }).PREP_BRIEF_CRON_TOKEN).toBe(
+      undefined,
+    );
+    expect(() => loadEnvironment({ ...base, PREP_BRIEF_CRON_TOKEN: "short" })).toThrow(
+      "PREP_BRIEF_CRON_TOKEN must contain at least 32 characters",
+    );
+  });
+
   it("rejects a short MCP server token", () => {
     expect(() =>
       loadEnvironment({

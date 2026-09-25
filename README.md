@@ -105,6 +105,24 @@ It is off by default because customer messages spend API credits. Enable it with
 Vercel. `ORDER_ASSISTANT_DAILY_LIMIT` (default 300) caps drafts per shop day in the API
 process; a 30-per-10-minutes limit per client handles bursts.
 
+## Morning prep brief
+
+The dashboard shows a prep plan for today, visible to staff and admins. The API
+calculates it deterministically: for each size it takes units ordered for pickup on
+the same weekday in each of the last four weeks (cancelled orders excluded; days with
+no orders at all are skipped rather than counted as zero), averages them, adds a 10%
+buffer and compares the result with current stock. The model only writes a short
+summary of those numbers. If the summary contains any number that is not in the plan,
+it is discarded and the table is shown alone, so the figures staff act on never come
+from the model.
+
+The brief is generated the first time someone opens the dashboard each shop day, then
+cached (kept for 60 days). Admins can update it with the latest orders. To prepare it
+before opening, set a random 32+ character `PREP_BRIEF_CRON_TOKEN` on Render and the
+same value as the GitHub Actions secret `PREP_BRIEF_CRON_TOKEN`; the "Morning prep
+brief" workflow then calls `POST /api/internal/prep-brief` at 06:00 IST. Without the
+token the route is not mounted and the workflow skips.
+
 ## Read-only MCP endpoint
 
 The API can optionally expose the same menu and report tools through `POST

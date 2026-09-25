@@ -83,6 +83,16 @@ const environmentSchema = z.object({
     blankAsUndefined,
     z.enum(["memory", "atlas"]).default("memory"),
   ),
+  // Optional: lets a scheduler prepare the morning prep brief via /api/internal/prep-brief.
+  PREP_BRIEF_CRON_TOKEN: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value || undefined)
+    .refine(
+      (value) => value === undefined || value.length >= 32,
+      "PREP_BRIEF_CRON_TOKEN must contain at least 32 characters",
+    ),
   // Optional: without it the /api/mcp route is not mounted.
   MCP_SERVER_TOKEN: z
     .string()

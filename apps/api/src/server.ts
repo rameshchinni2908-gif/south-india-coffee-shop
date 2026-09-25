@@ -25,6 +25,8 @@ import {
 import { MongooseActionProposalRepository } from "./repositories/action-proposal-repository.js";
 import { MongooseAgentRunRepository } from "./repositories/agent-run-repository.js";
 import { MongooseKnowledgeNoteRepository } from "./repositories/knowledge-note-repository.js";
+import { MongooseDemandRepository } from "./repositories/demand-repository.js";
+import { MongoosePrepBriefRepository } from "./repositories/prep-brief-repository.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
 import { MongooseOrderRepository } from "./repositories/order-repository.js";
 import { MongooseProductRepository } from "./repositories/product-repository.js";
@@ -37,6 +39,7 @@ import { createCategoryService } from "./services/category-service.js";
 import { createKnowledgeService, type KnowledgeService } from "./services/knowledge-service.js";
 import { createOrderAssistantService } from "./services/order-assistant-service.js";
 import { createOrderService } from "./services/order-service.js";
+import { createPrepBriefService } from "./services/prep-brief-service.js";
 import { createProductService } from "./services/product-service.js";
 import { createReportService } from "./services/report-service.js";
 import { createStaffAccountService } from "./services/staff-account-service.js";
@@ -179,6 +182,21 @@ const startServer = async (): Promise<void> => {
         }
       : {}),
   });
+  const prepBriefService = createPrepBriefService({
+    demandRepository: new MongooseDemandRepository(),
+    briefRepository: new MongoosePrepBriefRepository(),
+    productService,
+    timezone: environment.SHOP_TIMEZONE,
+    model: environment.OPENAI_MODEL,
+    ...(environment.OPENAI_API_KEY
+      ? {
+          narrate: createOpenAiStructuredResponder({
+            apiKey: environment.OPENAI_API_KEY,
+            model: environment.OPENAI_MODEL,
+          }),
+        }
+      : {}),
+  });
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -186,6 +204,7 @@ const startServer = async (): Promise<void> => {
     catalogServices: { categoryService, productService },
     orderService,
     orderAssistantService,
+    prepBrief: { service: prepBriefService, cronToken: environment.PREP_BRIEF_CRON_TOKEN },
     reportService,
     staffAccountService,
     adminAgentService,

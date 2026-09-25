@@ -18,6 +18,10 @@ import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
 import { createOrderAssistantRouter } from "./routes/order-assistant-routes.js";
+import {
+  createAdminPrepBriefRouter,
+  createPrepBriefCronRouter,
+} from "./routes/prep-brief-routes.js";
 import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
 import { createMcpRouter } from "./routes/mcp-route.js";
@@ -28,6 +32,7 @@ import type { KnowledgeService } from "./services/knowledge-service.js";
 import type { ProductService } from "./services/product-service.js";
 import type { OrderAssistantService } from "./services/order-assistant-service.js";
 import type { OrderService } from "./services/order-service.js";
+import type { PrepBriefService } from "./services/prep-brief-service.js";
 import type { ReportService } from "./services/report-service.js";
 import type { StaffAccountService } from "./services/staff-account-service.js";
 
@@ -43,6 +48,7 @@ interface CreateAppOptions {
   catalogServices?: CatalogServices;
   orderService?: OrderService;
   orderAssistantService?: OrderAssistantService;
+  prepBrief?: { service: PrepBriefService; cronToken?: string | undefined };
   reportService?: ReportService;
   mcp?: {
     productService: Pick<ProductService, "listPublic">;
@@ -66,6 +72,7 @@ export const createApp = ({
   catalogServices,
   orderService,
   orderAssistantService,
+  prepBrief,
   reportService,
   mcp,
   adminAgentService,
@@ -136,6 +143,20 @@ export const createApp = ({
 
   if (orderAssistantService) {
     app.use("/api/order-assistant", createOrderAssistantRouter(orderAssistantService, clientUrl));
+  }
+
+  if (prepBrief) {
+    app.use(
+      "/api/admin/prep-brief",
+      createAdminPrepBriefRouter(authService, prepBrief.service, clientUrl),
+    );
+    // Mounted only when a token is configured, like the MCP endpoint.
+    if (prepBrief.cronToken) {
+      app.use(
+        "/api/internal/prep-brief",
+        createPrepBriefCronRouter(prepBrief.service, prepBrief.cronToken),
+      );
+    }
   }
 
   if (reportService) {

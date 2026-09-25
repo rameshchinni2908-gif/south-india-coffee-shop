@@ -38,6 +38,7 @@ import {
   type OrderStatus,
 } from "../../orders/order-status.js";
 import { dashboardQuery } from "./dashboard-query.js";
+import { PrepBriefCard } from "./PrepBriefCard.js";
 import { ShopAssistantCard } from "./ShopAssistantCard.js";
 
 const MetricCard = ({
@@ -164,6 +165,7 @@ export const AdminDashboardPage = () => {
 
         {summary && (
           <Stack spacing={3}>
+            <PrepBriefCard canRegenerate={user.role === "ADMIN"} />
             {user.role === "ADMIN" && <ShopAssistantCard key={user.id} />}
 
             <Box

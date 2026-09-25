@@ -1,0 +1,33 @@
+name: Morning prep brief
+
+# Prepares the day's prep plan before opening. Optional: without the secret this job skips,
+# and the brief is generated the first time someone opens the dashboard that day.
+on:
+  schedule:
+    # 00:30 UTC is 06:00 in Asia/Kolkata. GitHub may start scheduled runs a little late.
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  prepare:
+    name: Prepare today's brief
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PREP_BRIEF_CRON_TOKEN: ${{ secrets.PREP_BRIEF_CRON_TOKEN }}
+      API_URL: ${{ vars.API_URL || 'https://south-india-coffee-shop-api.onrender.com' }}
+    steps:
+      - name: Skip when no token is configured
+        if: env.PREP_BRIEF_CRON_TOKEN == ''
+        run: echo "PREP_BRIEF_CRON_TOKEN is not set; the brief is generated on first dashboard visit."
+
+      - name: Request the brief
+        if: env.PREP_BRIEF_CRON_TOKEN != ''
+        # A free Render service may be asleep; retries give it time to wake up.
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 4 --retry-delay 20 --retry-all-errors --max-time 120 \
+            -X POST "$API_URL/api/internal/prep-brief" \
+            -H "Authorization: Bearer $PREP_BRIEF_CRON_TOKEN"

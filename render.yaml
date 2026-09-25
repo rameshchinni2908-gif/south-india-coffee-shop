@@ -49,6 +49,10 @@ services:
         sync: false
       - key: ORDER_ASSISTANT_DAILY_LIMIT
         sync: false
+      # Optional random 32+ character token; add the same value as the GitHub Actions
+      # secret PREP_BRIEF_CRON_TOKEN to prepare the prep brief at 06:00 IST.
+      - key: PREP_BRIEF_CRON_TOKEN
+        sync: false
       # Optional bearer token for the read-only /api/mcp endpoint.
       - key: MCP_SERVER_TOKEN
         sync: false

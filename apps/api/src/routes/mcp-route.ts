@@ -1,9 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { Router, type RequestHandler } from "express";
 
 import { projectShopAssistantSummary } from "../agents/shop-assistant-summary.js";
 import { createShopMenuTool } from "../agents/shop-menu-tool.js";
+import { hasBearerToken } from "../middleware/bearer-token.js";
 import type { ProductService } from "../services/product-service.js";
 import type { ReportService } from "../services/report-service.js";
 
@@ -28,14 +27,6 @@ interface JsonRpcRequest {
   method?: unknown;
   params?: unknown;
 }
-
-const authorized = (request: { get(name: string): string | undefined }, token: string): boolean => {
-  const provided = request.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!provided) return false;
-  const expected = Buffer.from(token);
-  const actual = Buffer.from(provided);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-};
 
 const response = (id: JsonRpcRequest["id"], result: unknown) => ({
   jsonrpc: "2.0",
@@ -69,7 +60,7 @@ export const createMcpRouter = ({
 
   const handle: RequestHandler = async (request, res) => {
     res.set("Cache-Control", "no-store");
-    if (!authorized(request, token)) {
+    if (!hasBearerToken(request, token)) {
       res.status(401).json({ error: "Authentication required." });
       return;
     }
