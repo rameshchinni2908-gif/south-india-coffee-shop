@@ -7,6 +7,7 @@ import pino from "pino";
 import { createApp } from "./app.js";
 import { createOpenAiEmbedder } from "./agents/openai-embeddings.js";
 import { createOpenAiResponder } from "./agents/openai-responses.js";
+import { createOpenAiStructuredResponder } from "./agents/openai-structured.js";
 import { SHOP_ASSISTANT_RESPONDER_OPTIONS } from "./agents/shop-assistant-instructions.js";
 import { configureDatabaseDns, connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadEnvironment } from "./config/environment.js";
@@ -34,6 +35,7 @@ import { createActionProposalService } from "./services/action-proposal-service.
 import { createAdminAgentService } from "./services/admin-agent-service.js";
 import { createCategoryService } from "./services/category-service.js";
 import { createKnowledgeService, type KnowledgeService } from "./services/knowledge-service.js";
+import { createOrderAssistantService } from "./services/order-assistant-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createProductService } from "./services/product-service.js";
 import { createReportService } from "./services/report-service.js";
@@ -164,12 +166,26 @@ const startServer = async (): Promise<void> => {
         maxRoomsPerIpPerHour: environment.GAME_MAX_ROOMS_PER_IP_PER_HOUR,
       })
     : null;
+  const orderAssistantService = createOrderAssistantService({
+    productService,
+    dailyLimit: environment.ORDER_ASSISTANT_DAILY_LIMIT,
+    timezone: environment.SHOP_TIMEZONE,
+    ...(environment.ORDER_ASSISTANT_ENABLED && environment.OPENAI_API_KEY
+      ? {
+          extract: createOpenAiStructuredResponder({
+            apiKey: environment.OPENAI_API_KEY,
+            model: environment.OPENAI_MODEL,
+          }),
+        }
+      : {}),
+  });
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
     isProduction: environment.NODE_ENV === "production",
     catalogServices: { categoryService, productService },
     orderService,
+    orderAssistantService,
     reportService,
     staffAccountService,
     adminAgentService,

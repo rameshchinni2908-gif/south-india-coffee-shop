@@ -8,6 +8,11 @@ const environmentSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   VITE_GAME_SOCKET_URL: z.union([z.string().url(), z.literal("")]).default(""),
+  // Shows "Order by message". The API must also set ORDER_ASSISTANT_ENABLED=true.
+  VITE_ORDER_ASSISTANT_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 const parsedEnvironment = environmentSchema.parse(import.meta.env);
@@ -89,6 +94,7 @@ export const environment = {
   }),
   shopName: resolveShopName(configuredShopName),
   gameEnabled: parsedEnvironment.VITE_GAME_ENABLED,
+  orderAssistantEnabled: parsedEnvironment.VITE_ORDER_ASSISTANT_ENABLED,
   gameSocketUrl: resolvedGameSocketUrl,
   gameSocketMisconfigured: isGameSocketMisconfigured({
     socketUrl: resolvedGameSocketUrl,

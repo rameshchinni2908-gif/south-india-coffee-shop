@@ -65,6 +65,19 @@ const environmentSchema = z.object({
     blankAsUndefined,
     z.coerce.number().int().min(64).max(3072).default(DEFAULT_EMBEDDING_DIMENSIONS),
   ),
+  // Public order-by-message assistant. Off unless explicitly enabled, because customers'
+  // messages spend API credits; the daily cap bounds that spending.
+  ORDER_ASSISTANT_ENABLED: z.preprocess(
+    blankAsUndefined,
+    z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+  ),
+  ORDER_ASSISTANT_DAILY_LIMIT: z.preprocess(
+    blankAsUndefined,
+    z.coerce.number().int().min(1).max(10_000).default(300),
+  ),
   // "memory" works on any MongoDB. "atlas" needs the index from `npm run knowledge:index`.
   KNOWLEDGE_VECTOR_SEARCH: z.preprocess(
     blankAsUndefined,

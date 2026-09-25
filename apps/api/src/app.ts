@@ -17,6 +17,7 @@ import { createAdminStaffAccountRouter } from "./routes/admin-staff-account-rout
 import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
+import { createOrderAssistantRouter } from "./routes/order-assistant-routes.js";
 import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
 import { createMcpRouter } from "./routes/mcp-route.js";
@@ -25,6 +26,7 @@ import type { AdminAgentService } from "./services/admin-agent-service.js";
 import type { CategoryService } from "./services/category-service.js";
 import type { KnowledgeService } from "./services/knowledge-service.js";
 import type { ProductService } from "./services/product-service.js";
+import type { OrderAssistantService } from "./services/order-assistant-service.js";
 import type { OrderService } from "./services/order-service.js";
 import type { ReportService } from "./services/report-service.js";
 import type { StaffAccountService } from "./services/staff-account-service.js";
@@ -40,6 +42,7 @@ interface CreateAppOptions {
   isProduction: boolean;
   catalogServices?: CatalogServices;
   orderService?: OrderService;
+  orderAssistantService?: OrderAssistantService;
   reportService?: ReportService;
   mcp?: {
     productService: Pick<ProductService, "listPublic">;
@@ -62,6 +65,7 @@ export const createApp = ({
   isProduction,
   catalogServices,
   orderService,
+  orderAssistantService,
   reportService,
   mcp,
   adminAgentService,
@@ -128,6 +132,10 @@ export const createApp = ({
   if (orderService) {
     app.use("/api/orders", createOrderRouter(orderService));
     app.use("/api/admin/orders", createAdminOrderRouter(authService, orderService));
+  }
+
+  if (orderAssistantService) {
+    app.use("/api/order-assistant", createOrderAssistantRouter(orderAssistantService, clientUrl));
   }
 
   if (reportService) {

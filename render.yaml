@@ -43,6 +43,12 @@ services:
         sync: false
       - key: KNOWLEDGE_VECTOR_SEARCH
         value: memory
+      # Public "Order by message". Set true here and VITE_ORDER_ASSISTANT_ENABLED=true on
+      # Vercel to turn it on. The daily limit caps customer drafts (API spending).
+      - key: ORDER_ASSISTANT_ENABLED
+        sync: false
+      - key: ORDER_ASSISTANT_DAILY_LIMIT
+        sync: false
       # Optional bearer token for the read-only /api/mcp endpoint.
       - key: MCP_SERVER_TOKEN
         sync: false

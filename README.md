@@ -76,6 +76,35 @@ and fails when a score drops below `apps/api/evals/baseline.json`; the same chec
 runs in `npm test`. `npm run eval -- --live` also grades real model answers. See
 the [evals guide](apps/api/evals/README.md).
 
+## Assistant change proposals
+
+The admin assistant can prepare two kinds of change: setting or adding stock for a
+size, and marking a size available or sold out. It never applies them. The model calls
+`propose_stock_update` or `propose_availability_change`; the API resolves the product
+and size names against the live catalogue, records a pending proposal, and returns it
+under the answer with **Approve** and **Reject** buttons. Approval
+(`POST /api/admin/agent/proposals/:id/approve`) runs the normal product service and is
+refused when the proposal has expired (15 minutes), was already decided, belongs to
+another admin, or the value changed since it was proposed. Prices, orders, accounts
+and product creation or deletion stay outside what the assistant can propose; the
+question guardrail refuses those before any model request. Proposals are kept for 90
+days as an audit trail and linked from the run log.
+
+## Order by message
+
+Customers can type an order ("two filter coffees and a masala dosa") on the menu. The
+API (`POST /api/order-assistant/draft`, public) asks the model for structured output
+whose JSON Schema only allows product and size names from the live menu, then checks
+every line against current availability, stock and the 20-per-item limit. The
+customer ticks what to keep and chooses sizes where needed; items are added to the
+cart using the menu's own prices, and checkout recalculates totals as usual. Nothing is
+stored and no order is placed.
+
+It is off by default because customer messages spend API credits. Enable it with
+`ORDER_ASSISTANT_ENABLED=true` on Render and `VITE_ORDER_ASSISTANT_ENABLED=true` on
+Vercel. `ORDER_ASSISTANT_DAILY_LIMIT` (default 300) caps drafts per shop day in the API
+process; a 30-per-10-minutes limit per client handles bursts.
+
 ## Read-only MCP endpoint
 
 The API can optionally expose the same menu and report tools through `POST

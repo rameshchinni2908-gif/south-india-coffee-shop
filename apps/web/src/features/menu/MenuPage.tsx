@@ -11,6 +11,8 @@ import { useCategories, useProducts } from "./menu-queries.js";
 import { getMenuProductFilters, voiceOrderProductFilters } from "./menu-query-options.js";
 import { MenuEmptyState, MenuErrorState, MenuLoadingState } from "./MenuStates.js";
 import { ProductCard } from "./ProductCard.js";
+import { environment } from "../../config/environment.js";
+import { OrderChatAssistant } from "./OrderChatAssistant.js";
 import { VoiceOrderAssistant } from "./VoiceOrderAssistant.js";
 
 const getCategory = (categories: Category[], categoryId: string): Category | undefined =>
@@ -83,6 +85,12 @@ export const MenuPage = () => {
           <VoiceOrderAssistant
             products={voiceProductsQuery.data?.products ?? productsQuery.data?.products ?? []}
           />
+          {/* A build-time flag, so the menu makes no extra request when the feature is off. */}
+          {environment.orderAssistantEnabled && (
+            <OrderChatAssistant
+              products={voiceProductsQuery.data?.products ?? productsQuery.data?.products ?? []}
+            />
+          )}
 
           {categoriesQuery.isError && (
             <Alert severity="warning" sx={{ mt: 2 }}>
