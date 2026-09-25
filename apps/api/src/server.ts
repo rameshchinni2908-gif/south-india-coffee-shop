@@ -21,6 +21,7 @@ import {
   MongooseGameResultRepository,
   type GameModule,
 } from "./modules/game/index.js";
+import { MongooseActionProposalRepository } from "./repositories/action-proposal-repository.js";
 import { MongooseAgentRunRepository } from "./repositories/agent-run-repository.js";
 import { MongooseKnowledgeNoteRepository } from "./repositories/knowledge-note-repository.js";
 import { MongooseCategoryRepository } from "./repositories/category-repository.js";
@@ -29,6 +30,7 @@ import { MongooseProductRepository } from "./repositories/product-repository.js"
 import { MongooseReportRepository } from "./repositories/report-repository.js";
 import { MongooseUserRepository } from "./repositories/user-repository.js";
 import { createAuthService } from "./services/auth-service.js";
+import { createActionProposalService } from "./services/action-proposal-service.js";
 import { createAdminAgentService } from "./services/admin-agent-service.js";
 import { createCategoryService } from "./services/category-service.js";
 import { createKnowledgeService, type KnowledgeService } from "./services/knowledge-service.js";
@@ -119,6 +121,10 @@ const startServer = async (): Promise<void> => {
     reportService,
     productService,
     agentRunRepository: new MongooseAgentRunRepository(),
+    proposalService: createActionProposalService({
+      repository: new MongooseActionProposalRepository(),
+      productService,
+    }),
     retrieveKnowledge: knowledgeService.retrieve,
     model: environment.OPENAI_MODEL,
     ...(environment.OPENAI_API_KEY

@@ -16,6 +16,7 @@ import {
   agentRunFeedbackBodySchema,
   agentRunIdParamsSchema,
   agentRunQuerySchema,
+  proposalIdParamsSchema,
 } from "../validation/admin-agent-schemas.js";
 
 export const createAdminAgentRouter = (
@@ -64,6 +65,15 @@ export const createAdminAgentRouter = (
     validateBody(agentRunFeedbackBodySchema),
     controller.rateRun,
   );
+  // Approval is the only way an assistant proposal changes shop data.
+  for (const decision of ["approve", "reject"] as const) {
+    router.post(
+      `/proposals/:id/${decision}`,
+      requireTrustedOrigin,
+      validateParams(proposalIdParamsSchema),
+      decision === "approve" ? controller.approveProposal : controller.rejectProposal,
+    );
+  }
 
   return router;
 };

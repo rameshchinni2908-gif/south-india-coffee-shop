@@ -306,3 +306,114 @@ describe("shop assistant RAG and live tools", () => {
     },
   );
 });
+
+describe("shop assistant change proposals", () => {
+  const proposed = (id: string, summary: string) => ({
+    status: "PROPOSED" as const,
+    proposalId: id,
+    summary,
+    expiresAt: "2026-09-13T07:17:00.000Z",
+    appliedNow: false as const,
+  });
+  const withProposals = () => ({
+    ...deps(),
+    proposeChange:
+      vi.fn<NonNullable<Parameters<typeof runShopAssistantAgent>[1]["proposeChange"]>>(),
+  });
+  const stockArgs = JSON.stringify({
+    productName: "Filter coffee",
+    variantName: "Regular",
+    mode: "add",
+    quantity: 20,
+  });
+
+  it("records a proposal, tells the model nothing changed, and returns it for approval", async () => {
+    const d = withProposals();
+    d.retrieveKnowledge.mockReturnValue([]);
+    d.proposeChange.mockResolvedValue(proposed("p1", "Filter coffee: Regular stock 2 → 22"));
+    d.respond
+      .mockResolvedValueOnce(request(call("propose_stock_update", stockArgs)))
+      .mockResolvedValueOnce(message("I've prepared a restock for your approval: Regular 2 → 22."));
+
+    const result = await runShopAssistantAgent("Add 20 regular filter coffee", d);
+
+    expect(d.proposeChange).toHaveBeenCalledExactlyOnceWith({
+      kind: "STOCK",
+      productName: "Filter coffee",
+      variantName: "Regular",
+      mode: "add",
+      quantity: 20,
+    });
+    const toolOutput = d.respond.mock.calls[1]?.[0].input.find(
+      (item) => item.type === "function_call_output",
+    );
+    expect(JSON.parse(String(toolOutput?.output))).toMatchObject({
+      status: "PROPOSED",
+      appliedNow: false,
+    });
+    expect(result.proposals).toEqual([
+      {
+        id: "p1",
+        summary: "Filter coffee: Regular stock 2 → 22",
+        expiresAt: "2026-09-13T07:17:00.000Z",
+      },
+    ]);
+  });
+
+  it("reports invalid values back to the model instead of failing the answer", async () => {
+    const d = withProposals();
+    d.respond
+      .mockResolvedValueOnce(
+        request(
+          call(
+            "propose_stock_update",
+            JSON.stringify({ productName: "X", variantName: null, mode: "set", quantity: 50_000 }),
+          ),
+        ),
+      )
+      .mockResolvedValueOnce(message("That quantity is too large to propose."));
+
+    const result = await runShopAssistantAgent("Set stock to 50000", d);
+
+    expect(d.proposeChange).not.toHaveBeenCalled();
+    const toolOutput = d.respond.mock.calls[1]?.[0].input.find(
+      (item) => item.type === "function_call_output",
+    );
+    expect(JSON.parse(String(toolOutput?.output))).toMatchObject({ status: "NOT_PROPOSED" });
+    expect(result.proposals).toEqual([]);
+  });
+
+  it("limits proposals per run and validates the batch before any change is recorded", async () => {
+    const d = withProposals();
+    d.respond.mockResolvedValue(
+      request(...["a", "b", "c", "d"].map((id) => call("propose_stock_update", stockArgs, id))),
+    );
+
+    await expect(runShopAssistantAgent("Restock everything", d)).rejects.toThrow(
+      "At most 3 changes",
+    );
+    expect(d.proposeChange).not.toHaveBeenCalled();
+  });
+
+  it("fails safely when proposals are not available", async () => {
+    const d = deps();
+    d.respond.mockResolvedValue(request(call("propose_stock_update", stockArgs)));
+
+    await expect(runShopAssistantAgent("Restock coffee", d)).rejects.toThrow(
+      "Change proposals are not available",
+    );
+    expect(d.respond).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an answer that claims the proposed change was applied", async () => {
+    const d = withProposals();
+    d.proposeChange.mockResolvedValue(proposed("p1", "Filter coffee: Regular stock 2 → 22"));
+    d.respond
+      .mockResolvedValueOnce(request(call("propose_stock_update", stockArgs)))
+      .mockResolvedValueOnce(message("Done — I have restocked the regular filter coffee."));
+
+    await expect(runShopAssistantAgent("Add 20 regular filter coffee", d)).rejects.toThrow(
+      "unperformed shop change",
+    );
+  });
+});

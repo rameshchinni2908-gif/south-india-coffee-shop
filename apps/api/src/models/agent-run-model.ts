@@ -16,6 +16,7 @@ const agentRunSchema = new Schema(
     answer: { type: String, default: null, maxlength: 4_000 },
     failureReason: { type: String, default: null, maxlength: 300 },
     sourceIds: { type: [String], default: [] },
+    proposalIds: { type: [String], default: [] },
     model: { type: String, default: null },
     totalDurationMs: durationMs,
     inputTokens: { type: Number, required: true, min: 0 },

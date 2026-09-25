@@ -8,6 +8,7 @@ import type {
   AgentRunFeedbackInput,
   AgentRunIdParams,
   AgentRunQuery,
+  ProposalIdParams,
 } from "../validation/admin-agent-schemas.js";
 
 const requireAdminId: (request: Parameters<RequestHandler>[0]) => string = (request) => {
@@ -23,6 +24,8 @@ export const createAdminAgentController = (
   createBriefing: RequestHandler;
   listRuns: RequestHandler;
   rateRun: RequestHandler;
+  approveProposal: RequestHandler;
+  rejectProposal: RequestHandler;
 } => ({
   getStatus: (_request, response) => {
     response.status(200).json({
@@ -54,5 +57,15 @@ export const createAdminAgentController = (
       request.body as AgentRunFeedbackInput,
     );
     response.status(200).json({ success: true, data: { run }, meta: {}, error: null });
+  }),
+  approveProposal: asyncHandler(async (request, response) => {
+    const { id } = request.validatedParams as ProposalIdParams;
+    const proposal = await adminAgentService.approveProposal(id, requireAdminId(request));
+    response.status(200).json({ success: true, data: { proposal }, meta: {}, error: null });
+  }),
+  rejectProposal: asyncHandler(async (request, response) => {
+    const { id } = request.validatedParams as ProposalIdParams;
+    const proposal = await adminAgentService.rejectProposal(id, requireAdminId(request));
+    response.status(200).json({ success: true, data: { proposal }, meta: {}, error: null });
   }),
 });

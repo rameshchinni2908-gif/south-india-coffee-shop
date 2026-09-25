@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { z } from "zod";
 
+import { PROPOSAL_TOOL_NAMES } from "../src/agents/action-proposals.js";
 import { SHOP_KNOWLEDGE_DOCUMENTS } from "../src/agents/shop-knowledge.js";
 
 const knowledgeIds = SHOP_KNOWLEDGE_DOCUMENTS.map((document) => document.id) as [
@@ -31,7 +32,9 @@ export const evalCaseSchema = z
     // Reference notes that must be retrieved for a correct answer. Empty means none required.
     expectedKnowledgeIds: z.array(z.enum(knowledgeIds)).default([]),
     // Live tools the agent must call before it can answer correctly.
-    expectedTools: z.array(z.enum(["get_shop_menu", "get_shop_summary"])).default([]),
+    expectedTools: z
+      .array(z.enum(["get_shop_menu", "get_shop_summary", ...PROPOSAL_TOOL_NAMES]))
+      .default([]),
     // Whether the deterministic question guardrail should refuse before any model request.
     shouldBlock: z.boolean().default(false),
     mustMention: patterns,

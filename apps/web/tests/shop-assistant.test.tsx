@@ -1,6 +1,6 @@
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -365,5 +365,87 @@ describe("shop assistant", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Ask assistant" }));
     expect(await screen.findByRole("heading", { name: "Your answer" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Rate this answer" })).not.toBeInTheDocument();
+  });
+
+  describe("change proposals", () => {
+    const proposal = {
+      id: "64b000000000000000000009",
+      summary: "Medu Vada: Plate stock 12 → 32",
+      expiresAt: "2026-09-10T10:15:00.000Z",
+    };
+    const decided = (status: string, failureReason: string | null = null) =>
+      response({
+        proposal: {
+          ...proposal,
+          status,
+          decidedAt: "2026-09-10T10:02:00.000Z",
+          failureReason,
+        },
+      });
+
+    it("applies a change only when the admin approves it", async () => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+        .mockResolvedValueOnce(response({ briefing: { ...briefing, proposals: [proposal] } }))
+        .mockResolvedValueOnce(decided("APPLIED"));
+      vi.stubGlobal("fetch", fetchMock);
+      const visitor = userEvent.setup();
+      renderAssistant();
+
+      await visitor.click(await screen.findByRole("button", { name: "Ask assistant" }));
+      const card = await screen.findByRole("listitem", {
+        name: "Proposed change: Medu Vada: Plate stock 12 → 32",
+      });
+      expect(within(card).getByText(/Nothing has changed yet/)).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      await visitor.click(within(card).getByRole("button", { name: "Approve" }));
+
+      expect(await within(card).findByText("Approved and applied")).toBeInTheDocument();
+      expect(within(card).queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+      expect(fetchMock.mock.calls[2]?.[0]).toMatch(
+        /\/api\/admin\/agent\/proposals\/64b000000000000000000009\/approve$/,
+      );
+      expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({ method: "POST" });
+      // Approving must never re-submit the surrounding (paid) question form.
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("shows why an approved change could not be applied", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn<typeof fetch>()
+          .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+          .mockResolvedValueOnce(response({ briefing: { ...briefing, proposals: [proposal] } }))
+          .mockResolvedValueOnce(decided("FAILED", "Plate changed since this was proposed.")),
+      );
+      const visitor = userEvent.setup();
+      renderAssistant();
+
+      await visitor.click(await screen.findByRole("button", { name: "Ask assistant" }));
+      await visitor.click(await screen.findByRole("button", { name: "Approve" }));
+
+      expect(await screen.findByText("Not applied")).toBeInTheDocument();
+      expect(screen.getByText("Plate changed since this was proposed.")).toBeInTheDocument();
+    });
+
+    it("rejects a change without applying it", async () => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(response({ agent: { enabled: true } }))
+        .mockResolvedValueOnce(response({ briefing: { ...briefing, proposals: [proposal] } }))
+        .mockResolvedValueOnce(decided("REJECTED"));
+      vi.stubGlobal("fetch", fetchMock);
+      const visitor = userEvent.setup();
+      renderAssistant();
+
+      await visitor.click(await screen.findByRole("button", { name: "Ask assistant" }));
+      await visitor.click(await screen.findByRole("button", { name: "Reject" }));
+
+      expect(await screen.findByText("Rejected")).toBeInTheDocument();
+      expect(fetchMock.mock.calls[2]?.[0]).toMatch(/\/reject$/);
+    });
   });
 });

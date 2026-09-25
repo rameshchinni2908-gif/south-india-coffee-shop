@@ -1,3 +1,4 @@
+import type { ProposalToolName } from "./action-proposals.js";
 import { createHybridRetriever, type RetrieveKnowledge } from "./hybrid-retrieval.js";
 import type { Respond } from "./openai-responses.js";
 import type { ShopAssistantSnapshot } from "./shop-assistant-summary.js";
@@ -13,7 +14,7 @@ export interface AgentModelCallTrace {
 }
 
 export interface AgentToolCallTrace {
-  name: "get_shop_summary" | "get_shop_menu";
+  name: "get_shop_summary" | "get_shop_menu" | ProposalToolName;
   durationMs: number;
   ok: boolean;
 }

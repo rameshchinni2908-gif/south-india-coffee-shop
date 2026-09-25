@@ -9,6 +9,8 @@ export const agentRunIdParamsSchema = z
   .object({ id: z.string().regex(/^[a-f\d]{24}$/i, "Invalid identifier") })
   .strict();
 
+export const proposalIdParamsSchema = agentRunIdParamsSchema;
+
 export const agentRunQuerySchema = z
   .object({
     outcome: z.enum(AGENT_RUN_OUTCOMES).optional(),
@@ -32,5 +34,6 @@ export const agentRunFeedbackBodySchema = z
 
 export type AdminBriefInput = z.infer<typeof adminBriefBodySchema>;
 export type AgentRunIdParams = z.infer<typeof agentRunIdParamsSchema>;
+export type ProposalIdParams = z.infer<typeof proposalIdParamsSchema>;
 export type AgentRunQuery = z.infer<typeof agentRunQuerySchema>;
 export type AgentRunFeedbackInput = z.infer<typeof agentRunFeedbackBodySchema>;

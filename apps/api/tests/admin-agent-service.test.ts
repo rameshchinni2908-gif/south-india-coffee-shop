@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ModelResponse, Respond } from "../src/agents/openai-responses.js";
 import type { AgentRunRepository } from "../src/repositories/agent-run-repository.js";
+import type { ActionProposalService } from "../src/services/action-proposal-service.js";
 import { createAdminAgentService } from "../src/services/admin-agent-service.js";
 import type { ReportService } from "../src/services/report-service.js";
 import type { ProductService } from "../src/services/product-service.js";
@@ -377,6 +378,68 @@ describe("production admin agent service", () => {
       await expect(service.listRuns({ limit: 10 })).rejects.toMatchObject({
         statusCode: 503,
         code: "AGENT_RUN_LOG_NOT_CONFIGURED",
+      });
+    });
+
+    it("binds proposals to the asking admin and records them in the run log", async () => {
+      const deps = createDependencies();
+      const runLog = createRunLog();
+      const proposalService = {
+        propose: vi.fn<ActionProposalService["propose"]>().mockResolvedValue({
+          status: "PROPOSED",
+          proposalId: "p1",
+          summary: "Coffee powder: Regular stock 5 → 25",
+          expiresAt: "2026-09-10T08:16:00.000Z",
+          appliedNow: false,
+        }),
+        approve: vi.fn<ActionProposalService["approve"]>(),
+        reject: vi.fn<ActionProposalService["reject"]>(),
+      };
+      deps.respond
+        .mockResolvedValueOnce({
+          status: "completed",
+          output: [
+            {
+              type: "function_call",
+              name: "propose_stock_update",
+              arguments: JSON.stringify({
+                productName: "Coffee powder",
+                variantName: "Regular",
+                mode: "add",
+                quantity: 20,
+              }),
+              call_id: "call_restock",
+            },
+          ],
+        })
+        .mockResolvedValueOnce(modelAnswer);
+      const service = createAdminAgentService({
+        ...deps,
+        agentRunRepository: runLog,
+        proposalService,
+      });
+
+      const briefing = await service.createBriefing("Add 20 coffee powder", "admin-1");
+
+      expect(proposalService.propose).toHaveBeenCalledWith(
+        "admin-1",
+        expect.objectContaining({ kind: "STOCK", quantity: 20 }),
+      );
+      expect(briefing.proposals).toEqual([
+        { id: "p1", summary: "Coffee powder: Regular stock 5 → 25", expiresAt: expect.any(String) },
+      ]);
+      const saved = runLog.create.mock.calls[0]![0];
+      expect(saved.proposalIds).toEqual(["p1"]);
+      expect(saved.trace.toolCalls).toEqual([
+        expect.objectContaining({ name: "propose_stock_update", ok: true }),
+      ]);
+    });
+
+    it("reports missing proposal support instead of guessing", async () => {
+      const service = createAdminAgentService(createDependencies());
+      await expect(service.approveProposal("p1", "admin-1")).rejects.toMatchObject({
+        statusCode: 503,
+        code: "PROPOSALS_NOT_CONFIGURED",
       });
     });
   });

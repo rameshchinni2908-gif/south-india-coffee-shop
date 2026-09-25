@@ -1,3 +1,4 @@
+import type { ProposedChange } from "../src/agents/action-proposals.js";
 import { traceShopAssistant } from "../src/agents/agent-trace.js";
 import type { RetrieveKnowledge } from "../src/agents/hybrid-retrieval.js";
 import type { Respond } from "../src/agents/openai-responses.js";
@@ -18,6 +19,8 @@ export interface LiveCaseResult {
   answer: string | null;
   blocked: boolean;
   toolsCalled: string[];
+  // What the model asked to change. Nothing is applied during evals.
+  proposedChanges: ProposedChange[];
   judge: Omit<JudgeVerdict, "inputTokens" | "outputTokens"> | null;
   durationMs: number;
   agentTokens: { input: number; output: number };
@@ -48,10 +51,28 @@ export const runLiveCase = async (
   const started = performance.now();
   let answer: string | null = null;
   let sourceCount = 0;
+  // Records proposals without resolving them; server-side resolution has its own unit tests.
+  const proposedChanges: ProposedChange[] = [];
+  const proposeChange = async (change: ProposedChange) => {
+    proposedChanges.push(change);
+    trace.toolCalls.push({
+      name: change.kind === "STOCK" ? "propose_stock_update" : "propose_availability_change",
+      durationMs: 0,
+      ok: true,
+    });
+    return {
+      status: "PROPOSED" as const,
+      proposalId: `eval-${proposedChanges.length}`,
+      summary: `${change.productName}: proposed change (eval)`,
+      expiresAt: new Date(EVAL_NOW.getTime() + 15 * 60_000).toISOString(),
+      appliedNow: false as const,
+    };
+  };
 
   try {
     const result = await runShopAssistantAgent(evalCase.question, {
       ...dependencies,
+      proposeChange,
       now: () => EVAL_NOW,
     });
     answer = result.answer;
@@ -137,6 +158,7 @@ export const runLiveCase = async (
     answer,
     blocked,
     toolsCalled,
+    proposedChanges,
     judge: verdict
       ? {
           score: verdict.score,

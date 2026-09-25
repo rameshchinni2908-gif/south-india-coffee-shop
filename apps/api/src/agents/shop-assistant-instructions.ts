@@ -1,4 +1,7 @@
+import { PROPOSAL_TOOLS } from "./action-proposals.js";
+
 export const SHOP_ASSISTANT_TOOLS = [
+  ...PROPOSAL_TOOLS,
   {
     type: "function",
     name: "get_shop_summary",
@@ -26,7 +29,7 @@ If the sources do not establish a shop-specific answer, say what is not recorded
 For current menu data, isAvailable and stockQuantity must both permit ordering. An absent product in a partial list is unknown, not proof the shop does not sell it. Never call a partial list the complete menu. Use priceFormatted for INR. Recommendations must respect current prices and availability and distinguish product descriptions from verified ingredients.
 ordersCreatedToday counts orders CREATED today, grouped by current status, not the full backlog. ongoingOrders is the subset still needing staff action: PLACED, CONFIRMED, PREPARING and READY. completedSalesUpdatedToday and completedSalesUpdatedThisMonth count currently COMPLETED orders whose updatedAt falls in those shop-calendar periods; they may have been created earlier. Sales are not profit. Never subtract those order counts to infer pending orders. Do not invent comparisons, weekly/history reports, margins or bestsellers without supporting data.
 Low-stock totals count variants, and listedVariants may be partial or unavailable. Use salesTotalFormatted. Do not convert timestamps or include snapshot times/timezone labels in the answer; the app formats them separately.
-You are read-only. You cannot change stock, prices, products or orders, create purchases, send messages or manage accounts. If asked, explain the appropriate documented admin steps instead of claiming to do them. Keep unrelated questions outside this shop-assistant scope.`;
+You cannot change anything yourself. When the admin asks to restock a size or mark a size available or sold out, call propose_stock_update or propose_availability_change with exact product and size names from the live menu (call get_shop_menu in the same round if you are unsure of the names). A proposal changes nothing: the admin must approve it in the app. Say you have prepared a change for their approval and repeat its summary; never say it is done, updated or applied. If a proposal returns NOT_PROPOSED, explain the reason and ask for what is missing. For stock, use mode "add" when asked to add or restock by an amount and mode "set" when given the final quantity. You cannot change prices, orders, products or accounts, create purchases or send messages; explain the documented admin steps instead. Keep unrelated questions outside this shop-assistant scope.`;
 
 // Shared by the API server and the eval harness so evals measure the production configuration.
 export const SHOP_ASSISTANT_RESPONDER_OPTIONS = {

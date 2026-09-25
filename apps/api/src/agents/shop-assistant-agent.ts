@@ -1,6 +1,16 @@
 import { z } from "zod";
 
 import { adminBriefQuestionSchema } from "../validation/admin-agent-schemas.js";
+import {
+  MAX_PROPOSALS_PER_RUN,
+  MAX_PROPOSED_STOCK,
+  PROPOSAL_TOOL_NAMES,
+  toProposedChange,
+  type ProposalSummary,
+  type ProposalToolName,
+  type ProposalToolResult,
+  type ProposedChange,
+} from "./action-proposals.js";
 import type { ModelInput, Respond } from "./openai-responses.js";
 import { readModelAnswer } from "./read-model-answer.js";
 import {
@@ -19,18 +29,23 @@ export interface ShopAssistantSource {
   excerpt: string;
 }
 
+const READ_TOOL_NAMES = ["get_shop_summary", "get_shop_menu"] as const;
 const toolCallSchema = z.object({
   type: z.literal("function_call"),
-  name: z.enum(["get_shop_summary", "get_shop_menu"]),
+  name: z.enum([...READ_TOOL_NAMES, ...PROPOSAL_TOOL_NAMES]),
   arguments: z.string(),
   call_id: z.string().min(1),
 });
+const isProposalTool = (name: string): name is ProposalToolName =>
+  (PROPOSAL_TOOL_NAMES as readonly string[]).includes(name);
 
 interface ShopAssistantDependencies {
   respond: Respond;
   getShopSummary(): Promise<ShopAssistantSnapshot>;
   getShopMenu(): Promise<ShopMenuSnapshot>;
   retrieveKnowledge?(question: string): KnowledgeDocument[] | Promise<KnowledgeDocument[]>;
+  // Records a pending change for the admin to approve. Without it, proposal tools fail the run.
+  proposeChange?(change: ProposedChange): Promise<ProposalToolResult>;
   now?: () => Date;
 }
 
@@ -57,6 +72,7 @@ export const runShopAssistantAgent = async (
     getShopSummary,
     getShopMenu,
     retrieveKnowledge = retrieveShopKnowledge,
+    proposeChange,
     now = () => new Date(),
   }: ShopAssistantDependencies,
 ) => {
@@ -69,6 +85,7 @@ export const runShopAssistantAgent = async (
       usedShopData: false,
       generatedAt: now().toISOString(),
       sources: [],
+      proposals: [],
     };
   }
 
@@ -92,19 +109,38 @@ export const runShopAssistantAgent = async (
   const requestedCalls = first.output.filter((item) => item.type === "function_call");
   let generatedAt = now().toISOString();
   let response = first;
+  const proposals: ProposalSummary[] = [];
 
   if (requestedCalls.length > 0) {
-    if (requestedCalls.length > 2) throw new Error("Only two live tools are permitted.");
+    if (requestedCalls.length > READ_TOOL_NAMES.length + MAX_PROPOSALS_PER_RUN) {
+      throw new Error("Too many tool calls were requested.");
+    }
     // Validate the entire batch before any database read, including duplicate names/call IDs.
     const calls = requestedCalls.map((item) => toolCallSchema.parse(item));
+    const readCalls = calls.filter((call) => !isProposalTool(call.name));
     if (
-      new Set(calls.map((call) => call.name)).size !== calls.length ||
+      new Set(readCalls.map((call) => call.name)).size !== readCalls.length ||
       new Set(calls.map((call) => call.call_id)).size !== calls.length
     ) {
       throw new Error("Duplicate tool calls are not permitted.");
     }
+    if (calls.length - readCalls.length > MAX_PROPOSALS_PER_RUN) {
+      throw new Error(`At most ${MAX_PROPOSALS_PER_RUN} changes can be proposed at once.`);
+    }
+    const proposedChanges = new Map<string, ProposedChange | ProposalToolResult>();
     for (const call of calls) {
-      if (
+      if (isProposalTool(call.name)) {
+        if (!proposeChange) throw new Error("Change proposals are not available.");
+        try {
+          proposedChanges.set(call.call_id, toProposedChange(call.name, call.arguments));
+        } catch {
+          // Out-of-range values are reported back to the model instead of failing the answer.
+          proposedChanges.set(call.call_id, {
+            status: "NOT_PROPOSED",
+            reason: `Invalid values: use a whole-number stock between 0 and ${MAX_PROPOSED_STOCK}.`,
+          });
+        }
+      } else if (
         !z
           .object({})
           .strict()
@@ -117,6 +153,26 @@ export const runShopAssistantAgent = async (
     input.push(...first.output);
     for (const call of calls) {
       signal.throwIfAborted();
+      const change = proposedChanges.get(call.call_id);
+      if (change) {
+        const result =
+          "kind" in change
+            ? await readBeforeDeadline(() => proposeChange!(change), signal)
+            : change;
+        if (result.status === "PROPOSED") {
+          proposals.push({
+            id: result.proposalId,
+            summary: result.summary,
+            expiresAt: result.expiresAt,
+          });
+        }
+        input.push({
+          type: "function_call_output",
+          call_id: call.call_id,
+          output: JSON.stringify(result),
+        });
+        continue;
+      }
       let data: ShopAssistantSnapshot | ShopMenuSnapshot;
       let source: ShopAssistantSource;
       if (call.name === "get_shop_summary") {
@@ -163,5 +219,6 @@ export const runShopAssistantAgent = async (
     usedShopData: sources.some((source) => source.kind !== "knowledge"),
     generatedAt,
     sources,
+    proposals,
   };
 };

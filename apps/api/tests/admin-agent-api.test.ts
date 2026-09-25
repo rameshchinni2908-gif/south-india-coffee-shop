@@ -30,6 +30,15 @@ const createService = () => ({
   }),
   listRuns: vi.fn<AdminAgentService["listRuns"]>().mockResolvedValue([]),
   rateRun: vi.fn<AdminAgentService["rateRun"]>(),
+  approveProposal: vi.fn<AdminAgentService["approveProposal"]>().mockResolvedValue({
+    id: "64b000000000000000000009",
+    summary: "Medu Vada: Plate stock 0 → 40",
+    status: "APPLIED",
+    expiresAt: "2026-09-10T08:15:00.000Z",
+    decidedAt: "2026-09-10T08:02:00.000Z",
+    failureReason: null,
+  }),
+  rejectProposal: vi.fn<AdminAgentService["rejectProposal"]>(),
 });
 const createAgentApp = (adminAgentService: AdminAgentService = createService()) =>
   createApp({
@@ -285,6 +294,62 @@ describe("production admin agent API", () => {
         ).status,
       ).toBe(403);
       expect(service.rateRun).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("change proposals", () => {
+    const proposalPath = (decision: string, id = "64b000000000000000000009") =>
+      `/api/admin/agent/proposals/${id}/${decision}`;
+
+    it.each(["approve", "reject"] as const)(
+      "lets the signed-in admin %s a proposal",
+      async (decision) => {
+        const service = createService();
+        service.rejectProposal.mockResolvedValue({
+          id: "64b000000000000000000009",
+          summary: "Medu Vada: Plate stock 0 → 40",
+          status: "REJECTED",
+          expiresAt: "2026-09-10T08:15:00.000Z",
+          decidedAt: "2026-09-10T08:02:00.000Z",
+          failureReason: null,
+        });
+        const response = await request(createAgentApp(service))
+          .post(proposalPath(decision))
+          .set("Cookie", "staff_access_token=admin-two");
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.proposal.status).toBe(
+          decision === "approve" ? "APPLIED" : "REJECTED",
+        );
+        const method = decision === "approve" ? service.approveProposal : service.rejectProposal;
+        expect(method).toHaveBeenCalledWith("64b000000000000000000009", "admin-two");
+      },
+    );
+
+    it("blocks staff, other sites and invalid ids before touching proposals", async () => {
+      const service = createService();
+      const app = createAgentApp(service);
+
+      expect(
+        (await request(app).post(proposalPath("approve")).set("Cookie", "staff_access_token=staff"))
+          .status,
+      ).toBe(403);
+      expect(
+        (
+          await request(app)
+            .post(proposalPath("approve"))
+            .set("Cookie", "staff_access_token=admin")
+            .set("Origin", "https://untrusted.example.com")
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await request(app)
+            .post(proposalPath("approve", "not-an-id"))
+            .set("Cookie", "staff_access_token=admin")
+        ).status,
+      ).toBe(400);
+      expect(service.approveProposal).not.toHaveBeenCalled();
     });
   });
 });

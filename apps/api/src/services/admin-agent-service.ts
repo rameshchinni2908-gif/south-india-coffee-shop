@@ -1,3 +1,4 @@
+import type { ProposalSummary, ProposedChange } from "../agents/action-proposals.js";
 import { traceShopAssistant, type AgentTrace } from "../agents/agent-trace.js";
 import type { RetrieveKnowledge } from "../agents/hybrid-retrieval.js";
 import { runShopAssistantAgent, type ShopAssistantSource } from "../agents/shop-assistant-agent.js";
@@ -13,6 +14,7 @@ import type {
   AgentRunRecord,
 } from "../types/agent-run.js";
 import { adminBriefQuestionSchema } from "../validation/admin-agent-schemas.js";
+import type { ActionProposalService, ProposalView } from "./action-proposal-service.js";
 import type { ReportService } from "./report-service.js";
 import type { ProductService } from "./product-service.js";
 
@@ -21,6 +23,8 @@ export interface AdminBriefing {
   usedShopData: boolean;
   generatedAt: string;
   sources?: ShopAssistantSource[];
+  // Pending changes the admin can approve or reject.
+  proposals?: ProposalSummary[];
   // Present when the run was saved to the run log, so the admin can rate it.
   runId?: string;
 }
@@ -34,6 +38,8 @@ export interface AdminAgentService {
     adminId: string,
     feedback: { rating: AgentRunRating; comment: string | null },
   ): Promise<AgentRunRecord>;
+  approveProposal(id: string, adminId: string): Promise<ProposalView>;
+  rejectProposal(id: string, adminId: string): Promise<ProposalView>;
 }
 
 interface CreateAdminAgentServiceOptions {
@@ -41,6 +47,8 @@ interface CreateAdminAgentServiceOptions {
   productService: Pick<ProductService, "listPublic">;
   respond?: Respond;
   agentRunRepository?: AgentRunRepository;
+  // Without it the assistant cannot prepare changes and proposal tools fail the run.
+  proposalService?: ActionProposalService;
   // Defaults to keyword search over the built-in notes.
   retrieveKnowledge?: RetrieveKnowledge;
   model?: string;
@@ -61,6 +69,7 @@ export const createAdminAgentService = ({
   productService,
   respond,
   agentRunRepository,
+  proposalService,
   retrieveKnowledge,
   model,
   now = () => new Date(),
@@ -74,6 +83,12 @@ export const createAdminAgentService = ({
       throw new HttpError(503, "AGENT_RUN_LOG_NOT_CONFIGURED", "The agent run log is not enabled.");
     }
     return agentRunRepository;
+  };
+  const requireProposals = () => {
+    if (!proposalService) {
+      throw new HttpError(503, "PROPOSALS_NOT_CONFIGURED", "Change proposals are not enabled.");
+    }
+    return proposalService;
   };
 
   return {
@@ -119,11 +134,31 @@ export const createAdminAgentService = ({
         },
         { elapsed, ...(retrieveKnowledge ? { retrieve: retrieveKnowledge } : {}) },
       );
+      // Proposals are bound to the asking admin and timed in the run log like other tools.
+      const proposeChange = proposalService
+        ? async (change: ProposedChange) => {
+            const start = elapsed();
+            const name =
+              change.kind === "STOCK" ? "propose_stock_update" : "propose_availability_change";
+            try {
+              const result = await proposalService.propose(adminId, change);
+              trace.toolCalls.push({ name, durationMs: Math.round(elapsed() - start), ok: true });
+              return result;
+            } catch (error) {
+              trace.toolCalls.push({ name, durationMs: Math.round(elapsed() - start), ok: false });
+              throw error;
+            }
+          }
+        : undefined;
       try {
         let briefing: Awaited<ReturnType<typeof runShopAssistantAgent>> | undefined;
         let failure: unknown;
         try {
-          briefing = await runShopAssistantAgent(parsed.data, { ...dependencies, now });
+          briefing = await runShopAssistantAgent(parsed.data, {
+            ...dependencies,
+            now,
+            ...(proposeChange ? { proposeChange } : {}),
+          });
         } catch (error) {
           failure = error;
         }
@@ -144,6 +179,7 @@ export const createAdminAgentService = ({
               answer: briefing?.answer ?? null,
               failureReason: briefing ? null : describeFailure(failure, trace),
               sourceIds: briefing?.sources.map((source) => source.id) ?? [],
+              proposalIds: briefing?.proposals.map((proposal) => proposal.id) ?? [],
               model: model ?? null,
               totalDurationMs: Math.max(0, Math.round(elapsed() - startedAt)),
               inputTokens: trace.modelCalls.reduce((sum, call) => sum + (call.inputTokens ?? 0), 0),
@@ -173,6 +209,8 @@ export const createAdminAgentService = ({
       }
     },
     listRuns: async (filters) => requireRunLog().list(filters),
+    approveProposal: async (id, adminId) => requireProposals().approve(id, adminId),
+    rejectProposal: async (id, adminId) => requireProposals().reject(id, adminId),
     async rateRun(id, adminId, { rating, comment }) {
       const run = await requireRunLog().setFeedback(id, adminId, {
         rating,

@@ -7,11 +7,28 @@ export interface ShopAssistantSource {
   excerpt: string;
 }
 
+export interface ProposalSummary {
+  id: string;
+  summary: string;
+  expiresAt: string;
+}
+
+export interface ProposalDecision {
+  id: string;
+  summary: string;
+  status: "PENDING" | "APPLYING" | "APPLIED" | "REJECTED" | "FAILED" | "EXPIRED";
+  expiresAt: string;
+  decidedAt: string | null;
+  failureReason: string | null;
+}
+
 export interface ShopBriefing {
   answer: string;
   usedShopData: boolean;
   generatedAt: string;
   sources?: ShopAssistantSource[];
+  // Changes the assistant prepared; nothing is applied until the admin approves.
+  proposals?: ProposalSummary[];
   runId?: string;
 }
 
@@ -105,4 +122,19 @@ export const getAgentRuns = async (
   const response = await apiGet<{ runs: AgentRun[] }>(`/api/admin/agent/runs?${params}`, signal);
 
   return response.data.runs;
+};
+
+export const decideProposal = async ({
+  id,
+  decision,
+}: {
+  id: string;
+  decision: "approve" | "reject";
+}): Promise<ProposalDecision> => {
+  const response = await apiPost<{ proposal: ProposalDecision }, Record<string, never>>(
+    `/api/admin/agent/proposals/${encodeURIComponent(id)}/${decision}`,
+    {},
+  );
+
+  return response.data.proposal;
 };

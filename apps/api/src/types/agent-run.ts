@@ -19,6 +19,8 @@ export interface NewAgentRun {
   answer: string | null;
   failureReason: string | null;
   sourceIds: string[];
+  // Changes the run proposed for approval.
+  proposalIds: string[];
   model: string | null;
   totalDurationMs: number;
   inputTokens: number;

@@ -1,10 +1,10 @@
 {
   "offline": {
-    "retrievalRecallAtK": 0.925,
-    "retrievalHitRate": 0.925,
-    "retrievalMrr": 0.864,
-    "guardrailPrecision": 0.625,
-    "guardrailRecall": 0.714
+    "retrievalRecallAtK": 0.928,
+    "retrievalHitRate": 0.928,
+    "retrievalMrr": 0.869,
+    "guardrailPrecision": 0.857,
+    "guardrailRecall": 1
   },
   "live": {
     "passRate": 0,

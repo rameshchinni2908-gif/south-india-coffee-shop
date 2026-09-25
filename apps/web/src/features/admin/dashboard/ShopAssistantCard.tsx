@@ -24,6 +24,7 @@ import { z } from "zod";
 import { ApiClientError } from "../../../lib/api-client.js";
 import { formatShopDateTime } from "../../orders/order-format.js";
 import { AnswerFeedback } from "./AnswerFeedback.js";
+import { ProposalCard } from "./ProposalCard.js";
 import { generateShopBriefing, getShopAssistantStatus } from "./shop-assistant-api.js";
 
 const questionSchema = z.object({
@@ -239,7 +240,8 @@ export const ShopAssistantCard = () => {
               sx={{ alignItems: { sm: "center" }, justifyContent: "space-between" }}
             >
               <Typography variant="caption" color="text.secondary">
-                Reads shop information. Changes to your shop stay in your hands.
+                Reads shop information and can prepare stock changes. Nothing changes until you
+                approve it.
               </Typography>
               <Button
                 type="submit"
@@ -283,6 +285,18 @@ export const ShopAssistantCard = () => {
                   >
                     {renderAnswer(briefing.answer)}
                   </Typography>
+                  {briefing.proposals && briefing.proposals.length > 0 && (
+                    <Stack spacing={1}>
+                      <Typography component="h4" variant="subtitle2">
+                        Changes for your approval
+                      </Typography>
+                      <Stack component="ul" spacing={1} sx={{ p: 0, m: 0 }}>
+                        {briefing.proposals.map((proposal) => (
+                          <ProposalCard key={proposal.id} proposal={proposal} />
+                        ))}
+                      </Stack>
+                    </Stack>
+                  )}
                   {sources && sources.length > 0 && (
                     <Accordion
                       disableGutters
