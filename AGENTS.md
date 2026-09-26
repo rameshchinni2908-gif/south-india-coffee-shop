@@ -439,6 +439,10 @@ Hosted deployments must use MongoDB Atlas, not the local Docker database.
   the feature flags, the in-memory room store, the server-resolved ram verdict,
   the bundle budget, and the two mirrored `game-contract.ts` copies that must
   never diverge. Everything in this file still applies on top.
+- **Working on the AI features?** Read `claude-agents.md` as well. It is the reference
+  for the shop assistant, change proposals, order by message, the prep brief and the
+  eval harness: the principles every agent follows, limits, configuration and how to
+  add a tool without weakening them.
 - Inspect existing code and tests before proposing architecture changes.
 - Make the smallest coherent change that completes the requested behavior.
 - Do not add dependencies when the existing stack can reasonably solve the task.
