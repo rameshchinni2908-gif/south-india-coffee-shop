@@ -24,6 +24,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.13",
+    "@langchain/langgraph": "^1.4.18",
+    "@langchain/langgraph-checkpoint-mongodb": "^1.4.1",
+    "@langchain/openai": "^1.6.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

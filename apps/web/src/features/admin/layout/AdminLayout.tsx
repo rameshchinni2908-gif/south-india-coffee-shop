@@ -1,3 +1,4 @@
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -130,6 +131,15 @@ export const AdminLayout = ({ user }: { user: StaffUser }) => {
             {user.role === "ADMIN" && (
               <Button component={Link} to="/admin/knowledge" startIcon={<MenuBookOutlinedIcon />}>
                 Knowledge
+              </Button>
+            )}
+            {user.role === "ADMIN" && (
+              <Button
+                component={Link}
+                to="/admin/restock-planner"
+                startIcon={<AccountTreeOutlinedIcon />}
+              >
+                Restock planner
               </Button>
             )}
           </Stack>
