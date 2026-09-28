@@ -1,5 +1,6 @@
 import { MongoDBSaver } from "@langchain/langgraph-checkpoint-mongodb";
-import { connection } from "mongoose";
+// Default import: Node cannot load a named `connection` export from the CommonJS package.
+import mongoose from "mongoose";
 
 // Paused plans nobody answers are removed after a week of inactivity.
 export const RESTOCK_PLAN_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -12,13 +13,13 @@ export const RESTOCK_PLAN_TTL_SECONDS = 7 * 24 * 60 * 60;
  * and appendMetadata, which driver 7 keeps, so the client is passed across that type boundary.
  */
 export const createRestockCheckpointer = async (): Promise<MongoDBSaver> => {
-  const client = connection.getClient() as unknown as ConstructorParameters<
+  const client = mongoose.connection.getClient() as unknown as ConstructorParameters<
     typeof MongoDBSaver
   >[0]["client"];
   const saver = new MongoDBSaver({
     client,
     // The database named in MONGODB_URI, the same one the rest of the app uses.
-    dbName: connection.name,
+    dbName: mongoose.connection.name,
     checkpointCollectionName: "restock_plan_checkpoints",
     checkpointWritesCollectionName: "restock_plan_checkpoint_writes",
     ttl: RESTOCK_PLAN_TTL_SECONDS,
