@@ -18,6 +18,7 @@ import { createAuthRouter } from "./routes/auth-routes.js";
 import { createCategoryRouter } from "./routes/category-routes.js";
 import { createHealthRouter } from "./routes/health-routes.js";
 import { createOrderAssistantRouter } from "./routes/order-assistant-routes.js";
+import { createRestockPlannerRouter } from "./routes/restock-planner-routes.js";
 import {
   createAdminPrepBriefRouter,
   createPrepBriefCronRouter,
@@ -26,6 +27,7 @@ import { createOrderRouter } from "./routes/order-routes.js";
 import { createProductRouter } from "./routes/product-routes.js";
 import { createMcpRouter } from "./routes/mcp-route.js";
 import type { AuthService } from "./services/auth-service.js";
+import type { RestockPlannerService } from "./langgraph/restock-planner-service.js";
 import type { AdminAgentService } from "./services/admin-agent-service.js";
 import type { CategoryService } from "./services/category-service.js";
 import type { KnowledgeService } from "./services/knowledge-service.js";
@@ -49,6 +51,8 @@ interface CreateAppOptions {
   orderService?: OrderService;
   orderAssistantService?: OrderAssistantService;
   prepBrief?: { service: PrepBriefService; cronToken?: string | undefined };
+  // Mounted whenever given; `service` is undefined when the planner is switched off.
+  restockPlanner?: { service?: RestockPlannerService | undefined };
   reportService?: ReportService;
   mcp?: {
     productService: Pick<ProductService, "listPublic">;
@@ -73,6 +77,7 @@ export const createApp = ({
   orderService,
   orderAssistantService,
   prepBrief,
+  restockPlanner,
   reportService,
   mcp,
   adminAgentService,
@@ -157,6 +162,13 @@ export const createApp = ({
         createPrepBriefCronRouter(prepBrief.service, prepBrief.cronToken),
       );
     }
+  }
+
+  if (restockPlanner) {
+    app.use(
+      "/api/admin/restock-planner",
+      createRestockPlannerRouter(authService, restockPlanner.service, clientUrl),
+    );
   }
 
   if (reportService) {

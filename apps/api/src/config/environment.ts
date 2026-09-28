@@ -83,6 +83,14 @@ const environmentSchema = z.object({
     blankAsUndefined,
     z.enum(["memory", "atlas"]).default("memory"),
   ),
+  // LangGraph restock planner (admin only). Off unless explicitly enabled.
+  RESTOCK_PLANNER_ENABLED: z.preprocess(
+    blankAsUndefined,
+    z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+  ),
   // Optional: lets a scheduler prepare the morning prep brief via /api/internal/prep-brief.
   PREP_BRIEF_CRON_TOKEN: z
     .string()

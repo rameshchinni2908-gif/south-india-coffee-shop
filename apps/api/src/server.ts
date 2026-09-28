@@ -37,6 +37,8 @@ import { createActionProposalService } from "./services/action-proposal-service.
 import { createAdminAgentService } from "./services/admin-agent-service.js";
 import { createCategoryService } from "./services/category-service.js";
 import { createKnowledgeService, type KnowledgeService } from "./services/knowledge-service.js";
+import { createOpenAiRestockChain, createRestockExplainer } from "./langgraph/restock-explainer.js";
+import { createRestockPlanner } from "./langgraph/create-restock-planner.js";
 import { createOrderAssistantService } from "./services/order-assistant-service.js";
 import { createOrderService } from "./services/order-service.js";
 import { createPrepBriefService } from "./services/prep-brief-service.js";
@@ -122,14 +124,16 @@ const startServer = async (): Promise<void> => {
       : {}),
   });
   await prepareKnowledgeBase(knowledgeService);
+  // Shared by the assistant and the restock planner: every stock change is a proposal.
+  const proposalService = createActionProposalService({
+    repository: new MongooseActionProposalRepository(),
+    productService,
+  });
   const adminAgentService = createAdminAgentService({
     reportService,
     productService,
     agentRunRepository: new MongooseAgentRunRepository(),
-    proposalService: createActionProposalService({
-      repository: new MongooseActionProposalRepository(),
-      productService,
-    }),
+    proposalService,
     retrieveKnowledge: knowledgeService.retrieve,
     model: environment.OPENAI_MODEL,
     ...(environment.OPENAI_API_KEY
@@ -197,6 +201,22 @@ const startServer = async (): Promise<void> => {
         }
       : {}),
   });
+  const restockPlannerService = environment.RESTOCK_PLANNER_ENABLED
+    ? await createRestockPlanner({
+        prepBriefService,
+        proposalService,
+        ...(environment.OPENAI_API_KEY
+          ? {
+              explain: createRestockExplainer(
+                createOpenAiRestockChain({
+                  apiKey: environment.OPENAI_API_KEY,
+                  model: environment.OPENAI_MODEL,
+                }),
+              ),
+            }
+          : {}),
+      })
+    : undefined;
   const app = createApp({
     clientUrl: environment.CLIENT_URL,
     authService,
@@ -205,6 +225,7 @@ const startServer = async (): Promise<void> => {
     orderService,
     orderAssistantService,
     prepBrief: { service: prepBriefService, cronToken: environment.PREP_BRIEF_CRON_TOKEN },
+    restockPlanner: { service: restockPlannerService },
     reportService,
     staffAccountService,
     adminAgentService,

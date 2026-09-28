@@ -123,6 +123,21 @@ same value as the GitHub Actions secret `PREP_BRIEF_CRON_TOKEN`; the "Morning pr
 brief" workflow then calls `POST /api/internal/prep-brief` at 06:00 IST. Without the
 token the route is not mounted and the workflow skips.
 
+## Restock planner (LangChain + LangGraph)
+
+A second, separate agent built with LangChain and LangGraph (`apps/api/src/langgraph/`);
+the existing assistants are unchanged. At `/admin/restock-planner` an admin drafts
+today's restock from the prep brief. The LangGraph workflow runs **draft → review →
+apply**: the draft takes quantities from the prep forecast (code), a LangChain chain adds
+short reasons, and the graph then **pauses** with `interrupt()` until the admin approves or
+edits each item. LangGraph's MongoDB checkpointer saves the paused state, so the plan
+survives reloads and API restarts (paused plans expire after 7 days). Approved items are
+applied through the same audited proposal service as the assistant, and an item is not
+applied if its stock changed since the draft.
+
+Enable it with `RESTOCK_PLANNER_ENABLED=true` on the API. Without `OPENAI_API_KEY` the
+plan still works, without the written reasons.
+
 ## Read-only MCP endpoint
 
 The API can optionally expose the same menu and report tools through `POST

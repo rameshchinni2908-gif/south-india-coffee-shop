@@ -11,16 +11,17 @@ update the matching section here in the same commit.
 
 ## 1. Agent inventory
 
-| #   | Feature                         | Who uses it | What the model may do                             | Entry point                                   |
-| --- | ------------------------------- | ----------- | ------------------------------------------------- | --------------------------------------------- |
-| 1   | Run log and feedback            | ADMIN       | —                                                 | `GET /api/admin/agent/runs`                   |
-| 2   | Eval harness                    | Developers  | —                                                 | `npm run eval`                                |
-| 3   | Shop assistant with hybrid RAG  | ADMIN       | Read notes, menu and report; answer with sources  | `POST /api/admin/agent/brief`                 |
-| 4   | Change proposals                | ADMIN       | Propose stock or availability changes (not apply) | `POST /api/admin/agent/proposals/:id/approve` |
-| 5   | Order by message                | Customers   | Pick menu items from a schema of live names       | `POST /api/order-assistant/draft`             |
-| 6   | Morning prep brief              | STAFF/ADMIN | Summarise numbers the code computed               | `GET /api/admin/prep-brief/today`             |
-| —   | Terminal lesson (`agent:brief`) | Learners    | Read the daily report                             | `npm run agent:brief`                         |
-| —   | Read-only MCP endpoint          | MCP clients | Read the menu and report                          | `POST /api/mcp` (bearer token)                |
+| #   | Feature                         | Who uses it | What the model may do                                  | Entry point                                   |
+| --- | ------------------------------- | ----------- | ------------------------------------------------------ | --------------------------------------------- |
+| 1   | Run log and feedback            | ADMIN       | —                                                      | `GET /api/admin/agent/runs`                   |
+| 2   | Eval harness                    | Developers  | —                                                      | `npm run eval`                                |
+| 3   | Shop assistant with hybrid RAG  | ADMIN       | Read notes, menu and report; answer with sources       | `POST /api/admin/agent/brief`                 |
+| 4   | Change proposals                | ADMIN       | Propose stock or availability changes (not apply)      | `POST /api/admin/agent/proposals/:id/approve` |
+| 5   | Order by message                | Customers   | Pick menu items from a schema of live names            | `POST /api/order-assistant/draft`             |
+| 6   | Morning prep brief              | STAFF/ADMIN | Summarise numbers the code computed                    | `GET /api/admin/prep-brief/today`             |
+| 7   | Restock planner (LangGraph)     | ADMIN       | Explain a computed plan; the graph pauses for approval | `POST /api/admin/restock-planner/runs`        |
+| —   | Terminal lesson (`agent:brief`) | Learners    | Read the daily report                                  | `npm run agent:brief`                         |
+| —   | Read-only MCP endpoint          | MCP clients | Read the menu and report                               | `POST /api/mcp` (bearer token)                |
 
 Lessons for learners: `apps/api/examples/admin-agent/README.md` (first agent),
 `RAG.md` (keyword RAG), `HYBRID-RAG.md` (embeddings and rank fusion).
@@ -145,6 +146,40 @@ each tool call, proposal ids) for 90 days. Admins rate their own answers; review
   regenerate. Optional 06:00 IST preparation by `.github/workflows/prep-brief.yml` through
   `POST /api/internal/prep-brief`, mounted only when `PREP_BRIEF_CRON_TOKEN` is set.
 
+## 7a. Restock planner (item 7) — LangChain + LangGraph
+
+A separate agent in `apps/api/src/langgraph/`, built with LangChain and LangGraph to show
+durable human-in-the-loop workflows. It follows every principle in section 2 and changes
+none of the other agents.
+
+```
+START → draft ─(nothing to restock)→ END
+          └→ review: interrupt() — state saved, graph pauses for the admin
+               └ resume with Command({ resume: decisions }) → apply → END
+```
+
+- `restock-planner-graph.ts`: `StateGraph` with a Zod `StateSchema`, three nodes and a
+  conditional edge. Quantities come from the prep forecast (`restockNeeded`), never the model.
+- `restock-explainer.ts`: LangChain `ChatPromptTemplate` piped into `ChatOpenAI`
+  `.withStructuredOutput(zod)`; reasons are kept only for plan items and only if every
+  number in them is a plan value. Failure leaves the plan without reasons.
+- `review` re-runs from the top on resume, so it has no side effects before `interrupt()`.
+- `apply` adds stock through `ActionProposalService` (propose `mode: "add"`, then approve):
+  audited, and refused if the stock changed since the draft.
+- `mongo-checkpointer.ts`: LangGraph's `MongoDBSaver` on Mongoose's connection
+  (collections `restock_plan_checkpoints` and `restock_plan_checkpoint_writes`, 7-day TTL).
+  The package is typed for MongoDB driver 6; the driver 7 client is passed with a
+  documented cast. Tests use `MemorySaver`, including a simulated restart.
+- `restock-planner-service.ts`: a run is a LangGraph thread (`thread_id` = run id) owned by
+  the admin who started it; decisions are accepted once (process-local lock).
+- Routes: `GET /api/admin/restock-planner/status`, `POST /runs`, `GET /runs/:runId`,
+  `POST /runs/:runId/decision`: ADMIN only, writes same-site, 10 starts per 15 minutes.
+- Enable with `RESTOCK_PLANNER_ENABLED=true`. UI: `/admin/restock-planner`; the run id is
+  kept in the URL so a reload resumes the same paused plan.
+- Limitation: if the process stops midway through `apply`, LangGraph re-runs that node on
+  the next resume and an item could be added twice. Changes are audited; a per-item
+  idempotency key would remove this.
+
 ## 8. Evals (item 2) — `apps/api/evals/`
 
 ```bash
@@ -195,6 +230,7 @@ npm run eval -- --update-baseline              # accept current scores as minimu
 | `VITE_ORDER_ASSISTANT_ENABLED` | Vercel                 | `false`                  | Shows "Order by message" on the menu      |
 | `PREP_BRIEF_CRON_TOKEN`        | Render + GitHub secret | unset                    | Enables the 06:00 prep brief route        |
 | `MCP_SERVER_TOKEN`             | Render                 | unset                    | Enables the read-only MCP endpoint        |
+| `RESTOCK_PLANNER_ENABLED`      | Render                 | `false`                  | Enables the LangGraph restock planner     |
 | `OPENAI_JUDGE_MODEL`           | local                  | `OPENAI_MODEL`           | Stronger model for live eval grading      |
 
 ## 11. Known limitations and follow-ups
