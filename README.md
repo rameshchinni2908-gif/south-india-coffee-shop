@@ -258,13 +258,21 @@ tab, with the admin shop assistant above the statistics.
 Orders use `PAY_AT_SHOP`, begin with status `PLACED`, and store money as integer
 paise. The shop owner confirmed `TAX_PERCENTAGE=0` for the current release on
 1 September 2026. Local examples and the Render Blueprint therefore use `0`;
-change it only after the owner confirms a new value. Stock is validated during
-checkout and reduced in a MongoDB transaction when staff confirm an order.
-Cancelling a confirmed order restores its stock in the same transaction.
+change it only after the owner confirms a new value. Placing an order reserves
+its stock: the order and the stock reduction are saved in one MongoDB
+transaction, so a second customer cannot order units that are already taken and
+staff can always confirm a placed order. Cancelling a placed or confirmed order
+releases its stock in the same transaction. A product's stock quantity is
+therefore the number still free to order, not the number on the shelf; when
+staff recount stock, they should leave out units held by open orders.
 
-Order confirmation requires MongoDB transaction support. Use MongoDB Atlas or
-a local replica set; a standalone local `mongod` can accept checkout orders but
-cannot atomically confirm them.
+Orders placed before stock reservation was introduced carry no reservation flag.
+They keep the earlier behavior: stock is taken when staff confirm them and is
+restored only if they are cancelled after confirmation.
+
+Checkout and order status changes require MongoDB transaction support. Use
+MongoDB Atlas or a local replica set (Docker Compose starts one); a standalone
+local `mongod` cannot accept orders.
 
 ## Seed the initial catalog and first admin
 

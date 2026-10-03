@@ -36,7 +36,7 @@ shop-assistant-agent.ts: send question + selected notes to the model
 Answer with references -> dashboard's References retrieved section
 ```
 
-The cancellation note explains that only `PLACED` and `CONFIRMED` orders can be cancelled, and cancelling a confirmed order restores its stock. The question asks about the rule, so the model can answer from that note without reading today's orders. This does not cancel any order.
+The cancellation note explains that only `PLACED` and `CONFIRMED` orders can be cancelled, and cancelling either one restores the stock it reserved. The question asks about the rule, so the model can answer from that note without reading today's orders. This does not cancel any order.
 
 For **"Which coffee sizes are available and what do they cost?"**, the notes are insufficient. The model is instructed to request `get_shop_menu` and use current product data. For **"How are today's and this month's sales doing?"**, it should request `get_shop_summary`.
 

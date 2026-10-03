@@ -75,6 +75,8 @@ export const CheckoutForm = ({ items }: CheckoutFormProps) => {
       });
 
       saveOrderConfirmation(order);
+      // The order reserved stock, so menu quantities are now stale.
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
       clearCart();
       navigate(`/order-confirmation/${order.orderNumber}`, { state: { order } });
     } catch (error) {

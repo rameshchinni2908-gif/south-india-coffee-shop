@@ -59,6 +59,8 @@ const orderSchema = new Schema(
     },
     pickupTime: { type: Date, required: true, index: true },
     notes: { type: String, trim: true, maxlength: 500, default: "" },
+    // True while the order holds its items' stock. No default: legacy orders lack the field.
+    stockReserved: { type: Boolean },
   },
   { timestamps: true },
 );

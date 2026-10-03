@@ -48,7 +48,7 @@ The first release is successful when:
 - The server recalculates every order total; client totals are never trusted.
 - Staff can update product price or availability without changing code.
 - Staff can process an order through its complete status flow.
-- Stock is reduced safely when an order is confirmed and cannot become negative.
+- Stock is reserved safely when an order is placed, released if it is cancelled, and cannot become negative.
 - The application works on current Chrome, Edge, Firefox and mobile browsers.
 - A new developer can run the full project using documented commands or Docker Compose.
 - Frontend, backend and database work after deployment through public HTTPS URLs.

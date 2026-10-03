@@ -180,17 +180,20 @@ class FakeOrderRepository implements OrderRepository {
   public createdOrder: NewOrderRecord | null = null;
   public currentOrder: OrderRecord | null = createOrderRecord();
   public confirmHasStock = true;
+  public reserveHasStock = true;
+  public cancelledFrom: OrderStatus | null = null;
   public lastListFilters: OrderListFilters | null = null;
 
-  public create(order: NewOrderRecord): Promise<OrderRecord> {
-    this.createdOrder = order;
+  public create(order: NewOrderRecord) {
+    if (!this.reserveHasStock) {
+      return Promise.resolve({ kind: "insufficient-stock" } as const);
+    }
 
+    this.createdOrder = order;
     return Promise.resolve({
-      id: "507f1f77bcf86cd799439099",
-      ...order,
-      createdAt: NOW,
-      updatedAt: NOW,
-    });
+      kind: "created",
+      order: { id: "507f1f77bcf86cd799439099", ...order, createdAt: NOW, updatedAt: NOW },
+    } as const);
   }
 
   public list(filters: OrderListFilters) {
@@ -243,11 +246,12 @@ class FakeOrderRepository implements OrderRepository {
     return Promise.resolve({ kind: "updated", order: this.currentOrder } as const);
   }
 
-  public cancelConfirmed(id: string) {
-    if (this.currentOrder?.id !== id || this.currentOrder.status !== "CONFIRMED") {
+  public cancel(id: string, expectedStatus: OrderStatus) {
+    if (this.currentOrder?.id !== id || this.currentOrder.status !== expectedStatus) {
       return Promise.resolve({ kind: "conflict" } as const);
     }
 
+    this.cancelledFrom = expectedStatus;
     this.currentOrder = { ...this.currentOrder, status: "CANCELLED" };
     return Promise.resolve({ kind: "updated", order: this.currentOrder } as const);
   }
@@ -328,6 +332,17 @@ describe("order service", () => {
     expect(orderRepository.createdOrder).toBeNull();
   });
 
+  it("rejects the order when its stock is taken before the reservation completes", async () => {
+    const { service, orderRepository } = createService();
+    orderRepository.reserveHasStock = false;
+
+    await expect(service.create(validInput)).rejects.toMatchObject({
+      statusCode: 409,
+      code: "INSUFFICIENT_STOCK",
+    });
+    expect(orderRepository.createdOrder).toBeNull();
+  });
+
   it("rejects unavailable variants", async () => {
     const productRepository = new FakeProductRepository();
     productRepository.product = createProduct({
@@ -397,13 +412,32 @@ describe("order service", () => {
     });
   });
 
-  it("restores confirmed stock through the transactional cancellation operation", async () => {
+  it("releases reserved stock when a placed order is cancelled", async () => {
+    const { service, orderRepository } = createService();
+
+    const order = await service.updateStatus(createOrderRecord().id, { status: "CANCELLED" });
+
+    expect(order.status).toBe("CANCELLED");
+    expect(orderRepository.cancelledFrom).toBe("PLACED");
+  });
+
+  it("releases stock when a confirmed order is cancelled", async () => {
     const { service, orderRepository } = createService();
     orderRepository.currentOrder = createOrderRecord("CONFIRMED");
 
     const order = await service.updateStatus(createOrderRecord().id, { status: "CANCELLED" });
 
     expect(order.status).toBe("CANCELLED");
+    expect(orderRepository.cancelledFrom).toBe("CONFIRMED");
+  });
+
+  it("reports a conflict when the order changes status during cancellation", async () => {
+    const { service, orderRepository } = createService();
+    orderRepository.cancel = () => Promise.resolve({ kind: "conflict" } as const);
+
+    await expect(
+      service.updateStatus(createOrderRecord().id, { status: "CANCELLED" }),
+    ).rejects.toMatchObject({ statusCode: 409, code: "ORDER_STATUS_CHANGED" });
   });
 
   it("moves a confirmed order through preparation, pickup, and completion", async () => {

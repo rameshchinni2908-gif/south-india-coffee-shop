@@ -130,7 +130,17 @@ export const createOrderService = ({
       notes: input.notes,
     };
 
-    return orderRepository.create(order);
+    const result = await orderRepository.create(order);
+
+    if (result.kind === "insufficient-stock") {
+      throw new HttpError(
+        409,
+        "INSUFFICIENT_STOCK",
+        "Some items sold out while you were ordering. Please review your cart and try again.",
+      );
+    }
+
+    return result.order;
   },
 
   async track(input) {
@@ -186,8 +196,8 @@ export const createOrderService = ({
       return result.order;
     }
 
-    if (currentOrder.status === "CONFIRMED" && input.status === "CANCELLED") {
-      const result = await orderRepository.cancelConfirmed(id);
+    if (input.status === "CANCELLED") {
+      const result = await orderRepository.cancel(id, currentOrder.status);
 
       if (result.kind !== "updated") {
         throw new HttpError(409, "ORDER_STATUS_CHANGED", "Order status changed; refresh and retry");

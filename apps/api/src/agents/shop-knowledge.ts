@@ -32,8 +32,18 @@ export const SHOP_KNOWLEDGE_DOCUMENTS: readonly KnowledgeDocument[] = [
     id: "order-status-stock",
     title: "Order status, cancellation, and stock changes",
     content:
-      "Staff process orders at /admin/orders through PLACED -> CONFIRMED -> PREPARING -> READY -> COMPLETED. Only PLACED and CONFIRMED orders can move to CANCELLED. PREPARING and READY cannot be cancelled through the current workflow; COMPLETED and CANCELLED are final. Checkout validates stock, but stock is reduced only when staff confirm an order. Confirmation checks stock again and can fail if insufficient stock remains. Cancelling a CONFIRMED order restores its stock atomically. Cancelling a PLACED order does not restore stock because that order has not reduced it. The assistant explains this flow; these notes do not grant it permission to change orders.",
-    keywords: ["order", "status", "cancel", "confirm", "prepare", "ready", "complete", "stock"],
+      "Staff process orders at /admin/orders through PLACED -> CONFIRMED -> PREPARING -> READY -> COMPLETED. Only PLACED and CONFIRMED orders can move to CANCELLED. PREPARING and READY cannot be cancelled through the current workflow; COMPLETED and CANCELLED are final. Placing an order reserves its stock: checkout reduces stock in the same transaction that saves the order, so other customers cannot order units that are already taken and staff can confirm a placed order without a stock check failing. Cancelling a PLACED or CONFIRMED order restores its reserved stock atomically. Stock quantities shown to staff are units still free to order, not units on the shelf. The assistant explains this flow; these notes do not grant it permission to change orders.",
+    keywords: [
+      "order",
+      "status",
+      "cancel",
+      "confirm",
+      "prepare",
+      "ready",
+      "complete",
+      "stock",
+      "reserve",
+    ],
   },
   {
     id: "product-management",

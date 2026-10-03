@@ -69,7 +69,7 @@
     "question": "When is stock reduced for an order?",
     "tags": ["knowledge"],
     "expectedKnowledgeIds": ["order-status-stock"],
-    "mustMention": ["confirm"]
+    "mustMention": ["plac|reserv|checkout"]
   },
   {
     "id": "status-cancel-preparing",
