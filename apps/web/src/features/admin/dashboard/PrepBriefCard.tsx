@@ -30,6 +30,8 @@ import {
 const NARRATIVE_NOTE: Partial<Record<PrepBrief["narrativeStatus"], string>> = {
   REJECTED: "The written summary used a number not in the plan, so it was left out.",
   FAILED: "The written summary could not be generated. The plan below is complete.",
+  OUTDATED:
+    "Stock or orders changed after the summary was written, so it is hidden. The table shows current numbers.",
 };
 
 const PlanTable = ({ brief }: { brief: PrepBrief }) => (
@@ -40,6 +42,7 @@ const PlanTable = ({ brief }: { brief: PrepBrief }) => (
           <TableCell>Item</TableCell>
           <TableCell align="right">Usual {brief.forecast.weekday}</TableCell>
           <TableCell align="right">Prepare</TableCell>
+          <TableCell align="right">Ordered today</TableCell>
           <TableCell align="right">In stock</TableCell>
           <TableCell align="right">Restock</TableCell>
         </TableRow>
@@ -62,6 +65,7 @@ const PlanTable = ({ brief }: { brief: PrepBrief }) => (
             <TableCell align="right" sx={{ fontWeight: 700 }}>
               {item.suggestedPrep}
             </TableCell>
+            <TableCell align="right">{item.orderedToday}</TableCell>
             <TableCell align="right">{item.stockQuantity}</TableCell>
             <TableCell
               align="right"
@@ -158,8 +162,8 @@ export const PrepBriefCard = ({ canRegenerate }: { canRegenerate: boolean }) => 
               )}
               <PlanTable brief={brief} />
               <Typography variant="caption" color="text.secondary">
-                Prepared {formatShopDateTime(brief.generatedAt)} IST. Suggestions only; check the
-                shelves before restocking.
+                Forecast prepared {formatShopDateTime(brief.generatedAt)} IST; stock and today's
+                orders are current. Suggestions only; check the shelves before restocking.
               </Typography>
             </Stack>
           ))}

@@ -7,6 +7,7 @@ import { ApiClientError } from "../../../lib/api-client.js";
 import { formatShopDateTime } from "../../orders/order-format.js";
 import { ADMIN_PRODUCTS_QUERY_KEY } from "../products/admin-catalog-queries.js";
 import { DASHBOARD_QUERY_KEY } from "./dashboard-query.js";
+import { PREP_BRIEF_QUERY_KEY } from "./prep-brief-api.js";
 import { decideProposal, type ProposalSummary } from "./shop-assistant-api.js";
 
 const DECIDED_LABEL = {
@@ -26,8 +27,8 @@ export const ProposalCard = ({ proposal }: { proposal: ProposalSummary }) => {
     onSuccess: async ({ status }) => {
       if (status !== "APPLIED") return;
       await Promise.all(
-        [DASHBOARD_QUERY_KEY, ADMIN_PRODUCTS_QUERY_KEY, ["products"]].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
+        [DASHBOARD_QUERY_KEY, PREP_BRIEF_QUERY_KEY, ADMIN_PRODUCTS_QUERY_KEY, ["products"]].map(
+          (queryKey) => queryClient.invalidateQueries({ queryKey }),
         ),
       );
     },

@@ -5,7 +5,8 @@ export interface PrepBriefRecord {
   date: string;
   forecast: PrepForecast;
   narrative: string | null;
-  narrativeStatus: "WRITTEN" | "SKIPPED" | "REJECTED" | "FAILED";
+  // OUTDATED is never stored: it marks a summary withheld because stock changed after it.
+  narrativeStatus: "WRITTEN" | "SKIPPED" | "REJECTED" | "FAILED" | "OUTDATED";
   model: string | null;
   generatedAt: Date;
 }

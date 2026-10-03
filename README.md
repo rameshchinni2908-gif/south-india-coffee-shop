@@ -110,14 +110,20 @@ process; a 30-per-10-minutes limit per client handles bursts.
 The dashboard shows a prep plan for today, visible to staff and admins. The API
 calculates it deterministically: for each size it takes units ordered for pickup on
 the same weekday in each of the last four weeks (cancelled orders excluded; days with
-no orders at all are skipped rather than counted as zero), averages them, adds a 10%
-buffer and compares the result with current stock. The model only writes a short
+no orders at all are skipped rather than counted as zero), averages them and adds a 10%
+buffer. Units already ordered for today have reserved their stock, so the restock
+column is the expected demand still to come minus the stock still free:
+`max(0, prepare - ordered today - in stock)`. The model only writes a short
 summary of those numbers. If the summary contains any number that is not in the plan,
 it is discarded and the table is shown alone, so the figures staff act on never come
 from the model.
 
 The brief is generated the first time someone opens the dashboard each shop day, then
-cached (kept for 60 days). Admins can update it with the latest orders. To prepare it
+cached (kept for 60 days). The forecast is cached, but the ordered-today, in-stock and
+restock columns are recalculated on every read, so stock added through the products
+page, the assistant or the restock planner is reflected at once and never suggested
+again. If those numbers change after the summary was written, the summary is hidden
+until an admin updates the brief with the latest orders. To prepare it
 before opening, set a random 32+ character `PREP_BRIEF_CRON_TOKEN` on Render and the
 same value as the GitHub Actions secret `PREP_BRIEF_CRON_TOKEN`; the "Morning prep
 brief" workflow then calls `POST /api/internal/prep-brief` at 06:00 IST. Without the

@@ -4,6 +4,7 @@ import {
   buildPrepForecast,
   comparisonDates,
   weekdayOf,
+  withLiveStock,
   type DailyVariantDemand,
 } from "../src/services/prep-forecast.js";
 import type { ProductRecord } from "../src/types/catalog.js";
@@ -95,6 +96,7 @@ describe("prep forecast", () => {
         averageUnits: 19.5,
         highestUnits: 24,
         suggestedPrep: 22,
+        orderedToday: 0,
         stockQuantity: 10,
         isAvailable: true,
         restockNeeded: 12,
@@ -139,5 +141,49 @@ describe("prep forecast", () => {
       }).items,
     ).toEqual([]);
     expect(buildPrepForecast({ date: TODAY, products: PRODUCTS, demand: [] }).items).toEqual([]);
+  });
+
+  it("does not ask to restock units that today's orders already reserved", () => {
+    const forecast = buildPrepForecast({
+      date: TODAY,
+      products: PRODUCTS,
+      demand: [row("2026-09-17", "coffee-regular", 22)],
+      // 8 coffees are already ordered for today; their stock has left the 10 on hand.
+      todayDemand: [row(TODAY, "coffee-regular", 5), row(TODAY, "coffee-regular", 3)],
+    });
+
+    expect(forecast.items[0]).toMatchObject({
+      suggestedPrep: 25,
+      orderedToday: 8,
+      stockQuantity: 10,
+      // 25 expected, 8 already sold: 17 still to come against 10 free units.
+      restockNeeded: 7,
+    });
+  });
+
+  it("recalculates a saved forecast from current stock and orders", () => {
+    const saved = buildPrepForecast({
+      date: TODAY,
+      products: PRODUCTS,
+      demand: [row("2026-09-17", "coffee-regular", 22), row("2026-09-17", "dosa-regular", 2)],
+    });
+    expect(saved.items.find((item) => item.variantId === "coffee-regular")?.restockNeeded).toBe(15);
+
+    // Staff added 15 coffees after the morning plan, and the dosa was removed from the menu.
+    const live = withLiveStock({
+      forecast: saved,
+      todayDemand: [row(TODAY, "coffee-regular", 2)],
+      products: [product("coffee", "Filter Coffee", [["coffee-regular", 25, true]])],
+    });
+
+    expect(live.items).toEqual([
+      expect.objectContaining({
+        variantId: "coffee-regular",
+        suggestedPrep: 25,
+        orderedToday: 2,
+        stockQuantity: 25,
+        restockNeeded: 0,
+      }),
+    ]);
   });
 });

@@ -24,6 +24,8 @@ import { Navigate, useOutletContext, useSearchParams } from "react-router-dom";
 
 import { ApiClientError } from "../../../lib/api-client.js";
 import type { StaffUser } from "../../../types/auth.js";
+import { PREP_BRIEF_QUERY_KEY } from "../dashboard/prep-brief-api.js";
+import { ADMIN_PRODUCTS_QUERY_KEY } from "../products/admin-catalog-queries.js";
 import {
   decideRestockPlan,
   getRestockPlan,
@@ -57,7 +59,18 @@ const ReviewStep = ({
   const [approved, setApproved] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(plan.items.map((item) => [item.variantId, true])),
   );
-  const decide = useMutation({ mutationFn: decideRestockPlan, retry: false, onSuccess: onDecided });
+  const queryClient = useQueryClient();
+  const decide = useMutation({
+    mutationFn: decideRestockPlan,
+    retry: false,
+    onSuccess: (decidedPlan) => {
+      onDecided(decidedPlan);
+      // Applied restocks change stock, so refresh every screen that shows it.
+      for (const queryKey of [PREP_BRIEF_QUERY_KEY, ADMIN_PRODUCTS_QUERY_KEY, ["products"]]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
   const decisions = plan.items.map((item) => {
     const quantity = Number(quantities[item.variantId]);
     return {

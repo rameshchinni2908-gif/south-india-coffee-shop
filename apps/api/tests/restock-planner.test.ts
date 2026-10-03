@@ -21,6 +21,7 @@ const forecastItem = (fields: Partial<PrepForecastItem>): PrepForecastItem => ({
   averageUnits: 19.5,
   highestUnits: 24,
   suggestedPrep: 22,
+  orderedToday: 0,
   stockQuantity: 10,
   isAvailable: true,
   restockNeeded: 12,

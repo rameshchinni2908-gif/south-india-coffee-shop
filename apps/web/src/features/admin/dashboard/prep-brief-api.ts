@@ -11,6 +11,7 @@ export interface PrepForecastItem {
   averageUnits: number;
   highestUnits: number;
   suggestedPrep: number;
+  orderedToday: number;
   stockQuantity: number;
   isAvailable: boolean;
   restockNeeded: number;
@@ -21,7 +22,7 @@ export interface PrepBrief {
   date: string;
   forecast: { date: string; weekday: string; weeksLookedBack: number; items: PrepForecastItem[] };
   narrative: string | null;
-  narrativeStatus: "WRITTEN" | "SKIPPED" | "REJECTED" | "FAILED";
+  narrativeStatus: "WRITTEN" | "SKIPPED" | "REJECTED" | "FAILED" | "OUTDATED";
   generatedAt: string;
 }
 
@@ -32,8 +33,8 @@ export const prepBriefQuery = () =>
     queryKey: PREP_BRIEF_QUERY_KEY,
     queryFn: async ({ signal }) =>
       (await apiGet<{ brief: PrepBrief }>("/api/admin/prep-brief/today", signal)).data.brief,
-    // The brief changes once a day; avoid refetching on every focus.
-    staleTime: 10 * 60_000,
+    // Stock columns are live, so refetch soon; the forecast itself changes once a day.
+    staleTime: 30_000,
     retry: false,
   });
 

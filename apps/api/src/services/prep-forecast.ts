@@ -20,6 +20,9 @@ export interface PrepForecastItem {
   averageUnits: number;
   highestUnits: number;
   suggestedPrep: number;
+  // Units already ordered for pickup on the forecast date. Placing an order reserves its
+  // stock, so these units have already left stockQuantity.
+  orderedToday: number;
   stockQuantity: number;
   isAvailable: boolean;
   restockNeeded: number;
@@ -50,6 +53,30 @@ export const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00.0
 export const comparisonDates = (date: string, weeks = PREP_WEEKS) =>
   Array.from({ length: weeks }, (_, index) => shiftDate(date, -7 * (index + 1)));
 
+const variantLookup = (products: readonly ProductRecord[]) =>
+  new Map(
+    products.flatMap((product) =>
+      product.variants.map((variant) => [variant.id, { product, variant }] as const),
+    ),
+  );
+
+// Only the demand still to come needs stock on hand: today's orders already reserved theirs.
+const stockColumns = (
+  suggestedPrep: number,
+  variant: ProductRecord["variants"][number],
+  todayDemand: readonly DailyVariantDemand[],
+) => {
+  const orderedToday = todayDemand
+    .filter((row) => row.variantId === variant.id)
+    .reduce((sum, row) => sum + row.quantity, 0);
+  return {
+    orderedToday,
+    stockQuantity: variant.stockQuantity,
+    isAvailable: variant.isAvailable,
+    restockNeeded: Math.max(0, suggestedPrep - orderedToday - variant.stockQuantity),
+  };
+};
+
 /**
  * Deterministic arithmetic only. The language model later describes these numbers but never
  * calculates them, so the plan is reproducible and testable.
@@ -57,21 +84,20 @@ export const comparisonDates = (date: string, weeks = PREP_WEEKS) =>
 export const buildPrepForecast = ({
   date,
   demand,
+  todayDemand = [],
   products,
   weeks = PREP_WEEKS,
 }: {
   date: string;
   demand: readonly DailyVariantDemand[];
+  // Orders already placed for pickup on `date`.
+  todayDemand?: readonly DailyVariantDemand[];
   products: readonly ProductRecord[];
   weeks?: number;
 }): PrepForecast => {
   const dates = comparisonDates(date, weeks);
   const tradingDates = dates.filter((day) => demand.some((row) => row.date === day));
-  const variants = new Map(
-    products.flatMap((product) =>
-      product.variants.map((variant) => [variant.id, { product, variant }] as const),
-    ),
-  );
+  const variants = variantLookup(products);
 
   const byVariant = new Map<string, DailyVariantDemand[]>();
   for (const row of demand) {
@@ -99,9 +125,7 @@ export const buildPrepForecast = ({
         averageUnits,
         highestUnits: Math.max(...unitsPerDay),
         suggestedPrep,
-        stockQuantity: current.variant.stockQuantity,
-        isAvailable: current.variant.isAvailable,
-        restockNeeded: Math.max(0, suggestedPrep - current.variant.stockQuantity),
+        ...stockColumns(suggestedPrep, current.variant, todayDemand),
         lowConfidence: tradingDates.length < 2,
       },
     ];
@@ -116,5 +140,31 @@ export const buildPrepForecast = ({
         right.suggestedPrep - left.suggestedPrep ||
         left.productName.localeCompare(right.productName),
     ),
+  };
+};
+
+/**
+ * Recalculates a saved forecast's stock columns from current stock and today's orders, so a
+ * plan prepared in the morning never suggests restocking units added or sold since then.
+ */
+export const withLiveStock = ({
+  forecast,
+  todayDemand,
+  products,
+}: {
+  forecast: PrepForecast;
+  todayDemand: readonly DailyVariantDemand[];
+  products: readonly ProductRecord[];
+}): PrepForecast => {
+  const variants = variantLookup(products);
+
+  return {
+    ...forecast,
+    items: forecast.items.flatMap((item): PrepForecastItem[] => {
+      const current = variants.get(item.variantId);
+      return current
+        ? [{ ...item, ...stockColumns(item.suggestedPrep, current.variant, todayDemand) }]
+        : [];
+    }),
   };
 };

@@ -29,6 +29,7 @@ const forecast: PrepForecast = {
       averageUnits: 19.5,
       highestUnits: 24,
       suggestedPrep: 22,
+      orderedToday: 0,
       stockQuantity: 10,
       isAvailable: true,
       restockNeeded: 12,
@@ -115,7 +116,7 @@ const createServiceFixture = (narrate?: RespondStructured) => {
     // 23:00 UTC on the 23rd is already the 24th in Asia/Kolkata.
     now: () => new Date("2026-09-23T23:00:00.000Z"),
   });
-  return { service, demandRepository, stored };
+  return { service, demandRepository, productService, stored };
 };
 
 describe("prep brief service", () => {
@@ -128,10 +129,14 @@ describe("prep brief service", () => {
     expect(first.date).toBe("2026-09-24");
     expect(concurrent).toEqual(first);
     expect(later).toEqual(first);
-    // Concurrent first visits share one generation.
-    expect(demandRepository.getDailyVariantDemand).toHaveBeenCalledTimes(1);
+    // Concurrent first visits share one generation; later reads only refresh stock.
+    expect(historyLookups(demandRepository)).toBe(1);
     expect(demandRepository.getDailyVariantDemand).toHaveBeenCalledWith(
       ["2026-09-17", "2026-09-10", "2026-09-03", "2026-08-27"],
+      "Asia/Kolkata",
+    );
+    expect(demandRepository.getDailyVariantDemand).toHaveBeenCalledWith(
+      ["2026-09-24"],
       "Asia/Kolkata",
     );
   });
@@ -142,8 +147,76 @@ describe("prep brief service", () => {
 
     await service.regenerateToday();
 
-    expect(demandRepository.getDailyVariantDemand).toHaveBeenCalledTimes(2);
+    expect(historyLookups(demandRepository)).toBe(2);
   });
+
+  it("shows current stock on a saved brief, so added stock is not suggested again", async () => {
+    const { service, stored, productService } = createServiceFixture();
+    stored.set("2026-09-24", {
+      ...brief,
+      narrative: "Prepare 22 Filter Coffee Regular and restock 12.",
+      narrativeStatus: "WRITTEN",
+      model: "test-model",
+    });
+    // The 12 suggested units were added after the morning brief.
+    productService.listPublic.mockResolvedValue(catalogWithCoffeeStock(22));
+
+    const today = await service.getToday();
+
+    expect(today.forecast.items[0]).toMatchObject({ stockQuantity: 22, restockNeeded: 0 });
+    // The summary quoted the old numbers, so it is withheld rather than contradicting them.
+    expect(today).toMatchObject({ narrative: null, narrativeStatus: "OUTDATED", model: null });
+    expect(stored.get("2026-09-24")?.narrativeStatus).toBe("WRITTEN");
+  });
+
+  it("keeps the written summary while stock is unchanged", async () => {
+    const { service, stored, productService } = createServiceFixture();
+    const written = "Prepare 22 Filter Coffee Regular and restock 12.";
+    stored.set("2026-09-24", { ...brief, narrative: written, narrativeStatus: "WRITTEN" });
+    productService.listPublic.mockResolvedValue(catalogWithCoffeeStock(10));
+
+    expect(await service.getToday()).toMatchObject({
+      narrative: written,
+      narrativeStatus: "WRITTEN",
+    });
+  });
+});
+
+const historyLookups = (demandRepository: {
+  getDailyVariantDemand: { mock: { calls: [readonly string[], string][] } };
+}) =>
+  demandRepository.getDailyVariantDemand.mock.calls.filter(([dates]) => dates.length > 1).length;
+
+const catalogWithCoffeeStock = (stockQuantity: number) => ({
+  items: [
+    {
+      id: "coffee",
+      name: "Filter Coffee",
+      slug: "filter-coffee",
+      description: "",
+      categoryId: "category",
+      imageUrl: "",
+      isVegetarian: true,
+      variants: [
+        {
+          id: "coffee-regular",
+          name: "Regular",
+          sku: "COFFEE-REG",
+          price: 3_000,
+          stockQuantity,
+          isAvailable: true,
+        },
+      ],
+      isActive: true,
+      isArchived: false,
+      archivedAt: null,
+      archivedBy: null,
+      lowStockThreshold: 5,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    },
+  ],
+  meta: { page: 1, limit: 100, total: 1, totalPages: 1 },
 });
 
 const authService: AuthService = {

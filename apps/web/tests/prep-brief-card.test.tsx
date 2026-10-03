@@ -16,6 +16,7 @@ const item = (fields: Record<string, unknown>) => ({
   averageUnits: 19.5,
   highestUnits: 24,
   suggestedPrep: 22,
+  orderedToday: 3,
   stockQuantity: 10,
   isAvailable: true,
   restockNeeded: 12,
@@ -37,6 +38,7 @@ const brief = (fields: Record<string, unknown> = {}) => ({
         averageUnits: 5,
         highestUnits: 5,
         suggestedPrep: 6,
+        orderedToday: 0,
         stockQuantity: 12,
         isAvailable: false,
         restockNeeded: 0,
@@ -85,6 +87,7 @@ describe("prep brief card", () => {
     );
     expect(within(rows[1]!).getByText("19.5 (max 24)")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("22")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("3")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("12")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Switched off")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Little history")).toBeInTheDocument();
@@ -107,6 +110,21 @@ describe("prep brief card", () => {
 
     expect(await screen.findByText(/used a number not in the plan/)).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  it("hides a summary that no longer matches current stock", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          response({ brief: brief({ narrative: null, narrativeStatus: "OUTDATED" }) }),
+        ),
+    );
+    renderCard(false);
+
+    expect(await screen.findByText(/changed after the summary was written/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Ordered today" })).toBeInTheDocument();
   });
 
   it("explains when there is no history yet", async () => {
